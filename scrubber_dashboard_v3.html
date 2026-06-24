@@ -1,0 +1,2645 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SOx Scrubber 생산 실적 대시보드</title>
+<style>
+/* ══ RESET & BASE ══ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f8fa;--surface:#ffffff;--border:#e8e9ec;--border2:#f0f1f4;
+  --text1:#1a1b1e;--text2:#5a5c66;--text3:#9a9ba6;
+  --blue:#3b82f6;--blue2:#eff6ff;--blue3:#2563eb;
+  --green:#16a34a;--green2:#f0fdf4;
+  --amber:#d97706;--amber2:#fffbeb;
+  --red:#dc2626;--red2:#fef2f2;
+  --purple:#7c3aed;--purple2:#f5f3ff;
+  --teal:#0891b2;--teal2:#f0fdfa;
+  --coral:#ea580c;--coral2:#fff7ed;
+  --gray:#6b7280;--gray2:#f9fafb;
+}
+body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var(--bg);color:var(--text1);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.page{max-width:1500px;margin:0 auto;padding:28px 32px 64px}
+
+/* ══ HEADER ══ */
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:18px 24px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
+.hdr-l{display:flex;align-items:center;gap:14px}
+.hdr-logo{width:32px;height:32px;background:linear-gradient(135deg,var(--blue),var(--blue3));border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:800;flex-shrink:0}
+.hdr-l h1{font-size:19px;font-weight:800;color:var(--text1);letter-spacing:-.02em}
+.hdr-l p{font-size:12px;color:var(--text3);margin-top:2px}
+.hdr-r{display:flex;align-items:center;gap:10px}
+.upload-wrap{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+.upload-row{display:flex;gap:8px}
+.upload-btn{display:flex;align-items:center;gap:6px;padding:8px 16px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2);background:var(--surface);white-space:nowrap;transition:all .15s;font-family:inherit}
+.upload-btn:hover{background:var(--gray2);border-color:#d0d1d8}
+.upload-btn input{display:none}
+.upload-hint{font-size:11px;color:var(--text3);text-align:right}
+.ref-date{font-size:12px;color:var(--blue3);font-weight:700;background:var(--blue2);padding:8px 16px;border-radius:8px;border:1px solid #bfdbfe;white-space:nowrap}
+
+/* ══ KPI CARDS ══ */
+.kpi-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;transition:box-shadow .15s}
+.kpi:hover{box-shadow:0 4px 16px rgba(0,0,0,.07)}
+.kpi .lbl{font-size:12px;color:var(--text2);font-weight:600;margin-bottom:8px}
+.kpi .val{font-size:30px;font-weight:800;line-height:1.1;letter-spacing:-.02em}
+.kpi .sub{font-size:11px;color:var(--text3);margin-top:4px}
+.kpi.blue .val{color:var(--blue3)}.kpi.green .val{color:var(--green)}
+.kpi.amber .val{color:var(--amber)}.kpi.red .val{color:var(--red)}
+.kpi.teal .val{color:var(--teal)}.kpi.gray .val{color:var(--gray)}
+.kpi.purple .val{color:var(--purple)}.kpi.coral .val{color:var(--coral)}
+
+/* ══ TAB BAR ══ */
+.tabs{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:5px;margin-bottom:20px;gap:4px}
+.tab{font-size:13px;font-weight:700;padding:9px 20px;cursor:pointer;border-radius:8px;color:var(--text2);transition:all .15s;white-space:nowrap}
+.tab.on{background:var(--blue3);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.3)}
+.tab:hover:not(.on){background:var(--gray2);color:var(--text1)}
+
+/* ══ FILTER BAR ══ */
+.fbar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;background:var(--surface);padding:12px 18px;border-radius:10px;border:1px solid var(--border)}
+.flbl{font-size:13px;color:var(--text2);font-weight:700;margin-right:2px}
+.fbtn{font-size:12px;padding:6px 16px;border:1px solid var(--border);border-radius:20px;cursor:pointer;background:var(--surface);color:var(--text2);transition:all .15s;font-weight:600;font-family:inherit}
+.fbtn:hover{background:var(--gray2);border-color:#c0c1c8}
+.fbtn.on{background:var(--blue3);color:#fff;border-color:var(--blue3);box-shadow:0 2px 6px rgba(37,99,235,.25)}
+
+/* ══ CARDS ══ */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px 24px}
+.card-title{font-size:14px;font-weight:700;color:var(--text1);margin-bottom:16px;display:flex;align-items:center;gap:8px;padding-bottom:12px;border-bottom:1px solid var(--border2)}
+.card-title span{font-size:12px;font-weight:400;color:var(--text3)}
+
+/* ══ GANTT ══ */
+.gantt-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.gantt-hdr{background:var(--gray2);border-bottom:1px solid var(--border)}
+.g-meta-hdr{display:grid;grid-template-columns:32px 115px 120px 44px 50px 66px 80px 1fr;font-size:12px;font-weight:700;color:var(--text2);padding:10px 14px;letter-spacing:.01em;border-bottom:1px solid var(--border);background:var(--gray2)}
+.g-body{overflow-y:auto;max-height:460px}
+.g-row{display:grid;grid-template-columns:32px 115px 120px 44px 50px 66px 80px 1fr;align-items:center;border-bottom:1px solid var(--border2);min-height:44px;cursor:pointer;transition:background .1s}
+.g-row:hover{background:#fafbff}
+.g-row:last-child{border-bottom:none}
+.gc{padding:6px 10px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text1)}
+.gc.dim{color:var(--text2);font-size:12px}
+.gt{padding:4px 8px;position:relative;height:44px}
+.bars{position:absolute;top:8px;left:8px;right:8px;bottom:8px}
+.b{position:absolute;height:100%;border-radius:3px}
+.b-cut{background:#d1d5db}.b-weld{background:#86a828}
+.b-di{background:#93c5fd}.b-acid{background:#60a5fa}
+.b-asm{background:#3b82f6}.b-fat{background:#1d4ed8}
+.b-done{opacity:.3}
+.dmark{position:absolute;top:2px;bottom:2px;width:3px;border-radius:2px}
+.tline{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;opacity:.9;z-index:5;pointer-events:none}
+.maxis{display:grid;grid-template-columns:32px 115px 120px 44px 50px 66px 80px 1fr;border-bottom:1px solid var(--border)}
+
+/* ══ PROGRESS BAR ══ */
+.prog-wrap{height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;flex:1;min-width:44px}
+.prog-fill{height:100%;border-radius:3px;transition:width .4s}
+
+/* ══ BADGES ══ */
+.bdg{display:inline-block;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700;white-space:nowrap}
+.b-done2{background:#dcfce7;color:#14532d}
+.b-prog{background:#dbeafe;color:#1e3a8a}
+.b-fab{background:#fef3c7;color:#78350f}
+.b-plan{background:#f3f4f6;color:#374151}
+.b-late{background:#fee2e2;color:#7f1d1d}
+
+/* ══ LEGEND ══ */
+.leg{display:flex;gap:18px;margin-bottom:14px;flex-wrap:wrap;align-items:center;background:var(--surface);padding:12px 18px;border-radius:10px;border:1px solid var(--border)}
+.li{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);font-weight:600}
+.lsw{width:14px;height:8px;border-radius:2px;display:inline-block;flex-shrink:0}
+
+/* ══ GRID LAYOUTS ══ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
+.g13{display:grid;grid-template-columns:300px 1fr;gap:16px;margin-bottom:16px}
+
+/* ══ COST PANEL ══ */
+.cost-list-body{overflow-y:auto;max-height:560px}
+.cpl{padding:14px 18px;border-bottom:1px solid var(--border2);cursor:pointer;transition:background .1s;border-left:3px solid transparent}
+.cpl:last-child{border-bottom:none}
+.cpl:hover{background:var(--gray2)}
+.cpl.sel{background:var(--blue2);border-left-color:var(--blue3)}
+.cost-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;height:380px;color:#c8cad4;font-size:14px;gap:12px;text-align:center}
+
+/* ══ PROCESS TABLE ══ */
+.ptbl{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+.ptbl th{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--gray2);text-align:right;white-space:nowrap}
+.ptbl th:first-child,.ptbl th:nth-child(2){text-align:left}
+.ptbl td{padding:12px 14px;border-bottom:1px solid var(--border2);text-align:right;vertical-align:middle;font-size:13px}
+.ptbl td:first-child,.ptbl td:nth-child(2){text-align:left}
+.ptbl tr:hover td{background:#fafbff}
+.ptbl tr.tot td{font-weight:800;background:var(--gray2);border-top:1px solid var(--border);font-size:13px}
+.ptbl tr:last-child td{border-bottom:none}
+.pdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:middle}
+
+/* ══ MH / LEADTIME ══ */
+.dday-pos{color:var(--green)}.dday-neg{color:var(--red)}.dday-warn{color:var(--amber)}
+
+/* ══ CHART WRAP ══ */
+.cw{position:relative;width:100%}
+
+/* ══ SUMMARY TABLE (ECS / LT) ══ */
+.stbl{width:100%;border-collapse:collapse;font-size:13px}
+.stbl th{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--gray2);text-align:right;white-space:nowrap}
+.stbl th:first-child{text-align:left}
+.stbl td{padding:11px 14px;border-bottom:1px solid var(--border2);text-align:right;vertical-align:middle}
+.stbl td:first-child{text-align:left}
+.stbl tr:hover td{background:#fafbff}
+.stbl tr:last-child td{border-bottom:none}
+.stbl tr.tot td{font-weight:800;background:var(--gray2);border-top:1px solid var(--border)}
+
+/* ══ MISC ══ */
+.wbdg{display:inline-block;font-size:11px;padding:3px 9px;background:var(--blue2);color:var(--blue3);border-radius:5px;font-weight:700;margin-left:7px}
+.ecs-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+
+/* ══ SEARCH TAB ══ */
+.search-box-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px 26px;margin-bottom:16px}
+.search-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.search-group{display:flex;flex-direction:column;gap:5px}
+.search-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+.search-input{height:40px;padding:0 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text1);background:var(--surface);outline:none;transition:border .15s;min-width:170px}
+.search-input:focus{border-color:var(--blue3);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.search-input-date{min-width:145px}
+.search-btn{height:40px;padding:0 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;transition:all .15s}
+.search-btn.primary{background:var(--blue3);color:#fff}
+.search-btn.primary:hover{background:#1d4ed8}
+.search-btn.reset{background:var(--gray2);color:var(--text2);border:1px solid var(--border)}
+.search-btn.reset:hover{background:#f0f1f4}
+.search-tag-row{display:flex;gap:7px;flex-wrap:wrap;align-items:center;min-height:28px}
+.search-tag{display:inline-flex;align-items:center;gap:5px;background:var(--blue2);color:var(--blue3);border-radius:20px;padding:4px 14px 4px 12px;font-size:12px;font-weight:700}
+.search-tag button{background:none;border:none;cursor:pointer;color:var(--blue);font-size:15px;line-height:1;padding:0;margin-left:2px}
+.result-count{font-size:12px;color:var(--text2);font-weight:700;margin-left:auto;background:var(--gray2);padding:4px 12px;border-radius:6px;border:1px solid var(--border)}
+.search-result-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.search-result-hdr{display:grid;grid-template-columns:32px 130px 125px 44px 50px 70px 80px 82px 86px 86px 1fr;font-size:11px;font-weight:700;color:var(--text2);padding:10px 14px;text-transform:uppercase;letter-spacing:.05em;background:var(--gray2);border-bottom:1px solid var(--border)}
+.search-result-body{overflow-y:auto;max-height:560px}
+.sr-row{display:grid;grid-template-columns:32px 130px 125px 44px 50px 70px 80px 82px 86px 86px 1fr;align-items:center;border-bottom:1px solid var(--border2);min-height:46px;transition:background .1s;cursor:pointer}
+.sr-row:hover{background:#fafbff}
+.sr-row:last-child{border-bottom:none}
+.src{padding:6px 10px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.src.dim{color:var(--text2);font-size:12px}
+.highlight{background:#fef9c3;border-radius:3px;padding:0 3px}
+.no-result{display:flex;flex-direction:column;align-items:center;justify-content:center;height:220px;color:#c8cad4;font-size:14px;gap:12px}
+.detail-panel{background:var(--gray2);border-top:1px solid var(--border);padding:24px 26px}
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.det-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.det-item .dl{font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+.det-item .dv{font-size:18px;font-weight:800}
+.process-timeline{display:flex;gap:0;margin-top:14px}
+.pt-step{flex:1;text-align:center;position:relative}
+.pt-step::before{content:'';position:absolute;top:15px;left:0;right:0;height:2px;background:var(--border);z-index:0}
+.pt-step:first-child::before{left:50%}
+.pt-step:last-child::before{right:50%}
+.pt-dot{width:30px;height:30px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;position:relative;z-index:1;border:2px solid var(--border);background:var(--surface);color:var(--text3)}
+.pt-dot.done{background:var(--green);border-color:var(--green);color:#fff}
+.pt-dot.active{background:var(--blue3);border-color:var(--blue3);color:#fff}
+.pt-dot.warn{background:var(--amber);border-color:var(--amber);color:#fff}
+.pt-label{font-size:11px;color:var(--text2);line-height:1.3;font-weight:700}
+.pt-date{font-size:10px;color:var(--text3);margin-top:3px}
+
+/* ══ ITEM COLOR DOTS (참고 대시보드 스타일) ══ */
+.item-dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:8px;vertical-align:middle;flex-shrink:0}
+
+/* ══ PROGRESS BAR (참고 대시보드 얇은 스타일) ══ */
+.achv-bar{height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;flex:1;margin:0 8px}
+.achv-fill{height:100%;border-radius:3px}
+
+/* ══ TODAY LINE & ACCUM LABEL ══ */
+.gantt-timeline-wrap{position:relative}
+.today-label{position:absolute;top:0;transform:translateX(-50%);background:#ef4444;color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:4px;white-space:nowrap;z-index:20;pointer-events:none;line-height:1.4}
+.today-label::after{content:'';position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);border:3px solid transparent;border-top-color:#ef4444}
+.tline{position:absolute;top:0;bottom:0;width:2px;background:#ef4444;opacity:.95;z-index:10;pointer-events:none}
+
+/* ══ 상태 3단계 배지 ══ */
+.b-done2{background:#dcfce7;color:#14532d}
+.b-active{background:#dbeafe;color:#1e3a8a}   /* 제작중 */
+.b-before{background:#f3f4f6;color:#6b7280}   /* 제작전 */
+
+/* ══ 진행 공정 태그 ══ */
+.proc-tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:10px;font-weight:700;white-space:nowrap;background:#fef3c7;color:#92400e;margin-top:2px}
+
+/* ══ 공정 색상 (참고 대시보드 일치) ══ */
+.b-cut{background:#d1d5db}          /* 절단 - 연회색 */
+.b-weld{background:#84cc16}         /* 취부/용접 - 연두 */
+.b-di{background:#93c5fd}           /* VI/DI - 연파랑 */
+.b-acid{background:#38bdf8}         /* 산처리 - 하늘 */
+.b-asm{background:#3b82f6}          /* 보온/조립 - 파랑 */
+.b-fat{background:#1d4ed8}          /* FAT - 진파랑 */
+.b-plan-bar{background:#86efac}     /* 제작전 - 연초록 */
+
+/* ══ 공정률 바 (상태 컬러 연동) ══ */
+.prog-done{background:#16a34a}
+.prog-active{background:#d97706}
+.prog-before{background:#9ca3af}
+
+/* ══ GANTT row 높이 ══ */
+.g-meta-hdr{display:grid;grid-template-columns:36px 100px 115px 46px 44px 60px 110px 1fr;font-size:12px;font-weight:700;color:var(--text2);padding:10px 14px;border-bottom:1px solid var(--border);background:var(--gray2)}
+.g-row{display:grid;grid-template-columns:36px 100px 115px 46px 44px 60px 110px 1fr;align-items:center;border-bottom:1px solid var(--border2);min-height:48px;cursor:pointer;transition:background .1s}
+.maxis{display:grid;grid-template-columns:36px 100px 115px 46px 44px 60px 110px 1fr;border-bottom:1px solid var(--border)}
+.gt{padding:4px 8px;position:relative;height:48px}
+.bars{position:absolute;top:9px;left:8px;right:8px;bottom:9px}
+
+
+/* ══ GANTT 가로 스크롤 구조 ══ */
+.gantt-outer{overflow:hidden;border-radius:12px;border:1px solid var(--border);background:#fff;margin-bottom:16px}
+.gantt-scroll-wrap{display:flex;overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth}
+.gantt-scroll-wrap::-webkit-scrollbar{height:7px}
+.gantt-scroll-wrap::-webkit-scrollbar-track{background:#f1f3f5;border-radius:4px}
+.gantt-scroll-wrap::-webkit-scrollbar-thumb{background:#c8ccd4;border-radius:4px}
+.gantt-scroll-wrap::-webkit-scrollbar-thumb:hover{background:#a0a5b0}
+
+/* 고정 컬럼 (좌측) */
+.gantt-fixed{flex-shrink:0;border-right:2px solid var(--border);background:#fff;z-index:10;position:sticky;left:0}
+.gantt-fixed-hdr{background:var(--gray2);border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text2);display:flex}
+.gantt-fixed-row{display:flex;align-items:center;border-bottom:1px solid var(--border2);min-height:48px}
+.gantt-fixed-row:last-child{border-bottom:none}
+.gantt-fixed-row:hover{background:#fafbff}
+
+/* 타임라인 영역 (가로 스크롤) */
+.gantt-timeline-area{flex:1;min-width:0;position:relative}
+.gantt-tl-hdr-wrap{background:var(--gray2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
+.gantt-tl-month-row{display:flex;border-bottom:1px solid var(--border2)}
+.gantt-tl-week-row{display:flex}
+.gantt-tl-month{text-align:center;font-size:12px;font-weight:800;color:var(--text1);padding:5px 0;border-right:1px solid var(--border);flex-shrink:0}
+.gantt-tl-week{text-align:center;font-size:10px;font-weight:600;color:var(--text3);padding:3px 0;border-right:1px solid var(--border2);flex-shrink:0;overflow:hidden}
+.gantt-tl-week.w1{color:var(--text2);font-weight:800;border-right-color:var(--border)}
+
+/* 기간 필터 바 */
+.gantt-filter-bar{display:flex;gap:8px;align-items:center;padding:10px 14px;background:#fff;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.gf-label{font-size:12px;font-weight:700;color:var(--text2)}
+.gf-select{height:32px;padding:0 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;color:var(--text1);background:#fff;cursor:pointer;outline:none}
+.gf-select:focus{border-color:var(--blue3)}
+.gf-btn{height:32px;padding:0 14px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s}
+.gf-btn:hover{background:var(--gray2)}
+.gf-btn.active{background:var(--blue3);color:#fff;border-color:var(--blue3)}
+.gantt-range-info{font-size:11px;color:var(--text3);margin-left:auto}
+
+/* 각 고정 컬럼 너비 */
+.gfc-no{width:36px;padding:4px 6px;font-size:11px;color:var(--text3);text-align:center;flex-shrink:0}
+.gfc-yard{width:95px;padding:4px 8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.gfc-hull{width:110px;padding:4px 8px;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.gfc-mw{width:40px;padding:4px 4px;text-align:center;font-weight:800;font-size:13px;flex-shrink:0}
+.gfc-cls{width:40px;padding:4px 4px;text-align:center;font-size:11px;color:var(--text2);flex-shrink:0}
+.gfc-st{width:58px;padding:4px 4px;text-align:center;flex-shrink:0}
+.gfc-pg{width:108px;padding:4px 6px;flex-shrink:0}
+.gantt-fixed-total-w{width:491px} /* 36+95+110+40+40+58+108+4(borders) */
+
+
+/* ══ 업로드 파일 소스 관리 ══ */
+.src-panel{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px;display:none}
+.src-panel.show{display:block}
+.src-panel-title{font-size:12px;font-weight:800;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.src-list{display:flex;flex-wrap:wrap;gap:6px}
+.src-tag{display:inline-flex;align-items:center;gap:6px;background:#f0f4ff;border:1px solid #c7d7fd;border-radius:20px;padding:4px 10px 4px 12px;font-size:11px;font-weight:700;color:#1e3a8a}
+.src-tag .src-name{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.src-tag .src-cnt{font-size:10px;color:#3b5bdb;font-weight:600}
+.src-tag button{background:none;border:none;cursor:pointer;color:#748ffc;font-size:14px;line-height:1;padding:0;margin:0;transition:color .15s}
+.src-tag button:hover{color:#e03131}
+.src-merge-info{font-size:11px;color:var(--text3);margin-top:6px}
+
+
+/* ══ Google Sheets 연동 ══ */
+.sheets-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center}
+.sheets-modal{background:#fff;border-radius:14px;padding:28px 32px;width:540px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.18)}
+.sheets-modal h2{font-size:16px;font-weight:800;margin-bottom:6px;color:var(--text1)}
+.sheets-modal p{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:14px}
+.sheets-input{width:100%;height:40px;padding:0 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;color:var(--text1);outline:none;transition:border .15s;margin-bottom:8px}
+.sheets-input:focus{border-color:var(--blue3);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.sheets-step{display:flex;gap:10px;margin-bottom:10px;padding:10px 14px;background:#f8f9ff;border-radius:8px;border:1px solid #e0e7ff}
+.sheets-step-num{width:22px;height:22px;border-radius:50%;background:var(--blue3);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.sheets-step-txt{font-size:12px;color:var(--text2);line-height:1.6}
+.sheets-step-txt strong{color:var(--text1);font-weight:700}
+.sheets-btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.sheets-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+.sheets-status.ok{background:#d3f9d8;color:#2f9e44}
+.sheets-status.err{background:#ffe3e3;color:#c92a2a}
+.sheets-status.loading{background:#fff3bf;color:#e67700}
+
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ── HEADER ── -->
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="hdr-logo">S</div>
+    <div><h1>SOx Scrubber 생산 실적 대시보드</h1><p id="hdrSub">우성엔텍 | 생산계획 2026-03-12 | ECS 공정현황 2026-03-20 | 원가 기준: Scrubber Unit 1억</p></div>
+  </div>
+  <div class="hdr-r">
+    <div class="upload-wrap">
+      <div class="upload-row">
+        <label class="upload-btn" title="생산계획 Excel 업로드">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 11v1a2 2 0 002 2h6a2 2 0 002-2v-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          생산계획 Excel
+          <input type="file" id="fileSchedule" accept=".xlsx,.xls" onchange="loadSchedule(this)">
+        </label>
+        <label class="upload-btn" title="ECS 공정현황 Excel 업로드">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 11v1a2 2 0 002 2h6a2 2 0 002-2v-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          ECS 공정현황
+          <input type="file" id="fileECS" accept=".xlsx,.xls" onchange="loadECS(this)">
+        </label>
+      </div>
+      <div class="upload-hint" id="uploadHint">파일 업로드 시 자동 반영 | 두 파일 모두 업로드 가능</div>
+    </div>
+    <button onclick="openSheetsModal()" id="sheetsBtnHdr"
+      style="height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;transition:all .15s"
+      onmouseover="this.style.background='#f0f4ff';this.style.borderColor='#a5b4fc'"
+      onmouseout="this.style.background='#fff';this.style.borderColor='var(--border)'">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#34a853" stroke-width="2"/><path d="M8 8h8M8 12h8M8 16h5" stroke="#34a853" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span id="sheetsBtnTxt">Sheets 연동</span>
+    </button>
+    <div class="ref-date" id="refDate"></div>
+  </div>
+</div>
+
+<!-- ── 파일 소스 관리 패널 ── -->
+<div class="src-panel" id="srcPanel">
+  <div class="src-panel-title">
+    <span>📁 업로드된 생산계획 파일 <span style="font-size:10px;background:#d3f9d8;color:#2f9e44;border-radius:4px;padding:1px 7px;margin-left:6px;font-weight:700">💾 브라우저 자동 저장</span></span>
+    <button onclick="clearAllSources()" style="font-size:11px;color:#e03131;background:none;border:1px solid #ffc9c9;border-radius:6px;padding:2px 10px;cursor:pointer;font-weight:700;font-family:inherit">전체 초기화</button>
+  </div>
+  <div class="src-list" id="srcList"></div>
+  <div class="src-merge-info" id="srcMergeInfo"></div>
+</div>
+<!-- ── KPI ── -->
+<div class="kpi-grid" id="kpiRow"></div>
+
+<!-- ── TABS ── -->
+<div class="tabs">
+  <div class="tab on" id="t1" onclick="sw(1)">📋 생산계획 Gantt</div>
+  <div class="tab" id="t2" onclick="sw(2)">📊 공정진행 현황</div>
+  <div class="tab" id="t3" onclick="sw(3)">💰 제작원가 분석</div>
+  <div class="tab" id="t4" onclick="sw(4)">⏱ 리드타임 &amp; M/H</div>
+  <div class="tab" id="t5" onclick="sw(5)">🔍 검색</div>
+  <div class="tab" id="t6" onclick="sw(6)">📈 주차별 이력</div>
+</div>
+
+<!-- ══ TAB 1: GANTT ══ -->
+<div id="v1">
+  <div class="fbar">
+    <span class="flbl">상태:</span>
+    <button class="fbtn on" onclick="gf('all',this)">전체</button>
+    <button class="fbtn" onclick="gf('done',this)">완료</button>
+    <button class="fbtn" onclick="gf('active',this)">제작중</button>
+    <button class="fbtn" onclick="gf('before',this)">제작전</button>
+    <button class="fbtn" onclick="gf('late',this)">지연위험</button>
+  </div>
+  <!-- Gantt 기간 필터 + 스크롤 구조 -->
+  <div class="gantt-outer">
+    <!-- 기간 필터 바 -->
+    <div class="gantt-filter-bar">
+      <span class="gf-label">기간:</span>
+      <button class="gf-btn active" onclick="setGanttRange(2026,1,6,this)">2026 상반기</button>
+      <button class="gf-btn" onclick="setGanttRange(2026,7,12,this)">2026 하반기</button>
+      <button class="gf-btn" onclick="setGanttRange(2026,1,12,this)">2026 전체</button>
+      <button class="gf-btn" onclick="setGanttRange(2027,1,6,this)">2027 상반기</button>
+      <button class="gf-btn" onclick="setGanttRange(2027,7,12,this)">2027 하반기</button>
+      <span class="gf-label" style="margin-left:12px">직접 설정:</span>
+      <select class="gf-select" id="gfYear" onchange="applyCustomRange()">
+        <option value="2025">2025</option><option value="2026" selected>2026</option>
+        <option value="2027">2027</option><option value="2028">2028</option>
+      </select>
+      <select class="gf-select" id="gfMonthFrom" onchange="applyCustomRange()">
+        <option value="1" selected>1월</option><option value="2">2월</option><option value="3">3월</option>
+        <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+        <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+        <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+      </select>
+      <span style="font-size:12px;color:var(--text3)">~</span>
+      <select class="gf-select" id="gfMonthTo" onchange="applyCustomRange()">
+        <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+        <option value="4">4월</option><option value="5">5월</option><option value="6" selected>6월</option>
+        <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+        <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+      </select>
+      <span class="gantt-range-info" id="ganttRangeInfo">2026년 1월~6월</span>
+    </div>
+
+    <!-- 컬럼 헤더 (고정 + 타임라인) -->
+    <div style="display:flex;background:var(--gray2);border-bottom:2px solid var(--border)">
+      <!-- 고정 헤더 -->
+      <div style="flex-shrink:0;width:487px;display:flex;align-items:center;border-right:2px solid var(--border);background:var(--gray2)">
+        <div class="gfc-no" style="font-weight:800;color:var(--text2)">No.</div>
+        <div class="gfc-yard" style="font-weight:800;color:var(--text2)">조선소</div>
+        <div class="gfc-hull" style="font-weight:800;color:var(--text2)">Hull No.</div>
+        <div class="gfc-mw" style="font-weight:800;color:var(--text2)">MW</div>
+        <div class="gfc-cls" style="font-weight:800;color:var(--text2)">선급</div>
+        <div class="gfc-st" style="font-weight:800;color:var(--text2)">상태</div>
+        <div class="gfc-pg" style="font-weight:800;color:var(--text2)">공정률/공정</div>
+      </div>
+      <!-- 타임라인 헤더 (가로스크롤 연동) -->
+      <div style="flex:1;overflow:hidden" id="ganttAxisWrap">
+        <div id="ganttMonthRow" class="gantt-tl-month-row"></div>
+        <div id="ganttWeekRow" class="gantt-tl-week-row"></div>
+      </div>
+    </div>
+
+    <!-- 바디 -->
+    <div style="display:flex;max-height:460px;overflow-y:auto" id="ganttBodyWrap">
+      <!-- 고정 컬럼 바디 -->
+      <div style="flex-shrink:0;width:487px;border-right:2px solid var(--border);overflow:hidden" id="ganttFixedBody"></div>
+      <!-- 타임라인 스크롤 바디 -->
+      <div style="flex:1;overflow-x:auto;overflow-y:hidden" id="ganttScrollBody">
+        <div id="ganttBody" style="position:relative;min-height:10px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="leg" id="legendEl"></div>
+  <!-- 주간 공정 완료 현황 -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-title" style="margin-bottom:0;border-bottom:none;padding-bottom:0">
+      주간별 공정 완료 현황
+      <span>각 공정 완료일 기준 집계</span>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button id="wpBtnChart" onclick="switchWeekProcView('chart')"
+          style="height:28px;padding:0 12px;border-radius:6px;border:1px solid var(--blue3);background:var(--blue3);color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">
+          📊 차트
+        </button>
+        <button id="wpBtnTable" onclick="switchWeekProcView('table')"
+          style="height:28px;padding:0 12px;border-radius:6px;border:1px solid var(--border);background:#fff;color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">
+          📋 테이블
+        </button>
+        <select id="wpYearSel" onchange="renderWeekProcView()" style="height:28px;padding:0 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;color:var(--text1)">
+          <option value="2026">2026년</option><option value="2027">2027년</option><option value="2028">2028년</option>
+        </select>
+        <select id="wpMonSel" onchange="renderWeekProcView()" style="height:28px;padding:0 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit;color:var(--text1)">
+          <option value="0">전체 월</option>
+          <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+          <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+          <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+          <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+      </div>
+    </div>
+    <div style="border-bottom:1px solid var(--border2);margin:10px 0 12px"></div>
+    <!-- 차트 뷰 -->
+    <div id="wpChartView" class="cw" style="height:200px"><canvas id="cWeekProc"></canvas></div>
+    <!-- 테이블 뷰 -->
+    <div id="wpTableView" style="display:none;overflow-x:auto;overflow-y:auto;max-height:300px">
+      <table id="wpTable" style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px">
+        <thead id="wpTableHead"></thead>
+        <tbody id="wpTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-title">월별 납기 건수</div><div class="cw" style="height:160px"><canvas id="cDel"></canvas></div></div>
+    <div class="card"><div class="card-title">조선소별 현황</div><div class="cw" style="height:160px"><canvas id="cYard"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ══ TAB 2: 공정진행 ══ -->
+<div id="v2" style="display:none">
+  <div class="g2" style="margin-bottom:10px">
+    <div class="card">
+      <div class="card-title">ECS 공정현황 (최신 업로드 기준) <span id="ecsWeek"></span></div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <table class="stbl" id="ecsTable" style="min-width:820px">
+          <thead><tr>
+            <th style="text-align:left;white-space:nowrap;min-width:120px">호선</th>
+            <th style="text-align:left;white-space:nowrap;min-width:100px">조선소</th>
+            <th style="text-align:left;white-space:nowrap;min-width:90px">제작사</th>
+            <th style="white-space:nowrap;min-width:80px">납기</th>
+            <th style="white-space:nowrap;min-width:60px">DI일</th>
+            <th style="white-space:nowrap;min-width:60px">검사일</th>
+            <th style="white-space:nowrap;min-width:140px">공정률</th>
+            <th style="white-space:nowrap;min-width:70px">D-day</th>
+            <th style="white-space:nowrap;min-width:70px">상태</th>
+          </tr></thead>
+          <tbody id="ecsBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">공정률 분포</div>
+      <div class="cw" style="height:220px"><canvas id="cProg"></canvas></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">납기 준수율 <span>완료 프로젝트 기준</span></div>
+      <div class="cw" style="height:180px"><canvas id="cOnTime"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">제작사별 공정률 평균</div>
+      <div class="cw" style="height:180px"><canvas id="cMaker"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB 3: 원가 ══ -->
+<div id="v3" style="display:none">
+  <div class="fbar">
+    <span class="flbl">조회:</span>
+    <button class="fbtn on" onclick="cf('all',this)">전체</button>
+    <button class="fbtn" onclick="cf('done',this)">완료</button>
+    <button class="fbtn" onclick="cf('active',this)">진행·제작</button>
+    <button class="fbtn" onclick="cf('plan',this)">예정</button>
+  </div>
+  <div class="g13">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:9px 11px;font-size:13px;font-weight:800;color:#2c2c2a;letter-spacing:.01em;border-bottom:1.5px solid #f0eeeb;background:#f9fafb;padding:14px 16px">프로젝트 선택</div>
+      <div class="cost-list-body" id="costList"></div>
+    </div>
+    <div class="card" id="costDetail">
+      <div class="cost-ph">
+        <svg width="38" height="38" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.1"/><path d="M8 12h8M8 8h5M8 16h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        <span>좌측에서 프로젝트 선택 →<br>공정별 제작원가 상세</span>
+      </div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-title">원가 구성 (공정별 합산)</div><div class="cw" style="height:185px"><canvas id="cCostPie"></canvas></div></div>
+    <div class="card"><div class="card-title">프로젝트별 계약금액</div><div class="cw" style="height:185px"><canvas id="cCostBar"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ══ TAB 4: 리드타임 & M/H ══ -->
+<div id="v4" style="display:none">
+  <div style="background:#e6f1fb;border:1px solid #a8c8ed;border-radius:8px;padding:14px 18px;margin-bottom:14px;font-size:13px;color:#0c447c;border-radius:10px;line-height:1.7">
+    <strong>리드타임 산출 방식:</strong> 생산계획상 첫 공정 착수일(절단 또는 DI) → 납기일 기준 총 소요일수<br>
+    <strong>공수(M/H) 산출 방식:</strong> MW 규모별 표준 공수 적용 — 10MW 기준 480MH, MW당 ±35MH 가감 | 실적 M/H = 표준MH × 현재 공정률(%) | <span style="opacity:.8">※ 실측치 입력 시 ECS 파일에 M/H 컬럼 추가 권장</span>
+  </div>
+  <div class="g2" style="margin-bottom:10px">
+    <div class="card">
+      <div class="card-title">D-day 현황 (납기까지 잔여일)</div>
+      <div class="cw" style="height:200px"><canvas id="cDday"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">리드타임 분포 (공정 소요일)</div>
+      <div class="cw" style="height:200px"><canvas id="cLT"></canvas></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">프로젝트별 M/H 계획 vs 실적</div>
+      <div class="cw" style="height:200px"><canvas id="cMH"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">프로젝트별 리드타임 &amp; D-day 상세</div>
+      <div style="overflow-y:auto;max-height:220px">
+        <table class="stbl" id="ltTable">
+          <thead><tr><th style="text-align:left">Hull No.</th><th style="text-align:left">조선소</th><th>처리용량</th><th>착수일</th><th>납기일</th><th>리드타임</th><th>D-day</th><th>계획 M/H</th><th>실적 M/H</th></tr></thead>
+          <tbody id="ltBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB 5: 검색 ══ -->
+<div id="v5" style="display:none">
+
+  <!-- 검색 조건 박스 -->
+  <div class="search-box-wrap">
+    <div class="search-row">
+      <!-- 호선/프로젝트명 -->
+      <div class="search-group">
+        <span class="search-label">호선 / 프로젝트명</span>
+        <input class="search-input" id="sq-hull" type="text" placeholder="예) S573, SOLAR LEGEND, YZJ…" oninput="runSearch()">
+      </div>
+      <!-- 조선소 -->
+      <div class="search-group">
+        <span class="search-label">조선소</span>
+        <input class="search-input" id="sq-yard" type="text" placeholder="예) HMD, SHI, 케이조선…" oninput="runSearch()">
+      </div>
+      <!-- 납기 기간 -->
+      <div class="search-group">
+        <span class="search-label">납기 시작일</span>
+        <input class="search-input search-input-date" id="sq-del-from" type="date" oninput="runSearch()">
+      </div>
+      <div class="search-group">
+        <span class="search-label">납기 종료일</span>
+        <input class="search-input search-input-date" id="sq-del-to" type="date" oninput="runSearch()">
+      </div>
+      <!-- 공정 착수일 -->
+      <div class="search-group">
+        <span class="search-label">공정 착수일 (이후)</span>
+        <input class="search-input search-input-date" id="sq-start-from" type="date" oninput="runSearch()">
+      </div>
+      <!-- 상태 -->
+      <div class="search-group">
+        <span class="search-label">상태</span>
+        <select class="search-input" id="sq-status" onchange="runSearch()" style="min-width:100px">
+          <option value="">전체</option>
+          <option value="done">완료</option>
+          <option value="prog">진행중</option>
+          <option value="fab">제작중</option>
+          <option value="plan">예정</option>
+          <option value="late">지연위험</option>
+        </select>
+      </div>
+      <!-- MW 범위 -->
+      <div class="search-group">
+        <span class="search-label">MW 범위</span>
+        <div style="display:flex;align-items:center;gap:4px">
+          <input class="search-input" id="sq-mw-min" type="number" placeholder="최소" style="min-width:60px;width:60px" oninput="runSearch()">
+          <span style="font-size:10px;color:#6b7280">~</span>
+          <input class="search-input" id="sq-mw-max" type="number" placeholder="최대" style="min-width:60px;width:60px" oninput="runSearch()">
+        </div>
+      </div>
+      <button class="search-btn reset" onclick="resetSearch()">초기화</button>
+    </div>
+    <!-- 활성 필터 태그 & 결과 수 -->
+    <div class="search-tag-row" id="searchTags">
+      <span style="font-size:10px;color:#a8a7a0">검색 조건을 입력하면 즉시 결과가 표시됩니다</span>
+    </div>
+  </div>
+
+  <!-- 검색 결과 -->
+  <div class="search-result-card">
+    <div class="search-result-hdr">
+      <div>#</div>
+      <div>Hull No.</div>
+      <div>조선소</div>
+      <div style="text-align:center">MW</div>
+      <div style="text-align:center">선급</div>
+      <div style="text-align:center">상태</div>
+      <div style="text-align:center">공정률</div>
+      <div style="text-align:center">납기일</div>
+      <div style="text-align:center">D-day</div>
+      <div style="text-align:right">계약금액</div>
+      <div style="padding-left:6px">공정 진행 단계</div>
+    </div>
+    <div class="search-result-body" id="searchResultBody"></div>
+  </div>
+
+  <!-- 선택 프로젝트 상세 -->
+  <div id="searchDetail" style="display:none" class="detail-panel">
+    <div id="searchDetailInner"></div>
+  </div>
+</div>
+
+<!-- ══ TAB 6: 주차별 이력 ══ -->
+<div id="v6" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 20px;margin-bottom:14px">
+    <div>
+      <div style="font-size:14px;font-weight:800;color:var(--text1);margin-bottom:3px">주차별 공정률 이력</div>
+      <div style="font-size:12px;color:var(--text3)">ECS 공정현황 파일 업로드 시 자동으로 해당 주차 데이터가 누적 저장됩니다 (브라우저 로컬 저장)</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="historyCount" style="font-size:12px;color:var(--text2);background:var(--gray2);padding:5px 12px;border-radius:6px;border:1px solid var(--border)">저장된 주차: 0건</span>
+      <button onclick="exportHistory()" style="height:36px;padding:0 16px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;font-family:inherit">📥 CSV 다운로드</button>
+      <button onclick="clearHistory()" style="height:36px;padding:0 16px;border-radius:8px;border:1px solid #fee2e2;background:#fff;font-size:12px;font-weight:700;color:#dc2626;cursor:pointer;font-family:inherit">🗑 이력 초기화</button>
+    </div>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-title">호선별 공정률 주차 추이 <span>아래에서 호선 선택</span></div>
+      <div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap" id="histHullFilter"></div>
+      <div class="cw" style="height:220px"><canvas id="cHistLine"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">주차별 전체 평균 공정률</div>
+      <div class="cw" style="height:220px"><canvas id="cHistAvg"></canvas></div>
+    </div>
+  </div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+    <div style="background:var(--gray2);padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;font-weight:700;color:var(--text1)">주차별 상세 이력</span>
+      <span style="font-size:11px;color:var(--text3)">최신순 | 색상: 초록=80%↑ 파랑=50%↑ 주황=30%↑ 회색=30%↓ | 숫자=전주 대비 변화</span>
+    </div>
+    <div style="overflow-x:auto;overflow-y:auto;max-height:440px;position:relative">
+      <table id="histTable" style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px">
+        <thead id="histTableHead"></thead>
+        <tbody id="histTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ══════════════════════════════════════════
+   BUILT-IN DATA
+══════════════════════════════════════════ */
+const SCHEDULE_DATA = [
+  {no:239,yard:"대한조선",hull:"HN5109",mw:11,cls:"ABS",delivery:"2026-01-20",cutting:null,welding:null,di_start:null,acid:null,assembly:"01-05",fat_start:null},
+  {no:240,yard:"SKDY",hull:"6311",mw:6,cls:"NK",delivery:"2026-01-23",cutting:null,welding:null,di_start:"01-08",acid:"01-09",assembly:"01-13",fat_start:"01-19"},
+  {no:241,yard:"케이조선",hull:"S1814",mw:10,cls:"DNV",delivery:"2026-01-29",cutting:null,welding:null,di_start:"01-12",acid:"01-13",assembly:"01-19",fat_start:"01-22"},
+  {no:242,yard:"HD현대미포 주식회사",hull:"H2945",mw:10,cls:"NK",delivery:"2026-02-02",cutting:null,welding:null,di_start:"01-22",acid:"01-23",assembly:"01-28",fat_start:"02-02"},
+  {no:243,yard:"케이조선",hull:"S1815",mw:10,cls:"DNV",delivery:"2026-02-06",cutting:null,welding:null,di_start:"01-20",acid:"01-21",assembly:"01-26",fat_start:"01-30"},
+  {no:244,yard:"Jiangsu Yangzijiang Offshore",hull:"YZJ2024-1611",mw:9,cls:"LR",delivery:"2026-02-06",cutting:null,welding:null,di_start:"01-26",acid:"01-27",assembly:"01-30",fat_start:"02-05"},
+  {no:245,yard:"SHI",hull:"SN2718",mw:12,cls:"LR",delivery:"2026-02-10",cutting:null,welding:null,di_start:"02-05",acid:"02-06",assembly:"02-10",fat_start:"02-12"},
+  {no:246,yard:"RETROFIT",hull:"LPG POINTIS",mw:13,cls:"BV",delivery:"2026-02-12",cutting:null,welding:null,di_start:"01-29",acid:"01-30",assembly:"02-04",fat_start:null},
+  {no:247,yard:"Jiangsu Yangzijiang Offshore",hull:"YZJ2024-1624",mw:9,cls:"LR",delivery:"2026-02-26",cutting:null,welding:null,di_start:"02-10",acid:"02-11",assembly:"02-19",fat_start:"02-25"},
+  {no:248,yard:"Jiangsu Yangzijiang Offshore",hull:"YZJ2023-1574",mw:9,cls:"LR",delivery:"2026-03-16",cutting:null,welding:null,di_start:"02-24",acid:"02-25",assembly:"03-03",fat_start:"03-12"},
+  {no:249,yard:"폴라리스",hull:"SOLAR LEGEND",mw:17,cls:"KR",delivery:"2026-03-16",cutting:"01-26",welding:"02-02",di_start:"03-04",acid:"03-05",assembly:"03-08",fat_start:null},
+  {no:250,yard:"한화오션",hull:"H5514",mw:16,cls:"ABS",delivery:"2026-03-20",cutting:null,welding:null,di_start:"03-03",acid:"03-04",assembly:"03-10",fat_start:null},
+  {no:251,yard:"HD현대미포 주식회사",hull:"S573",mw:15,cls:"ABS",delivery:"2026-04-10",cutting:null,welding:null,di_start:"03-20",acid:"03-21",assembly:"03-25",fat_start:null},
+  {no:252,yard:"HD현대삼호",hull:"HSHI8322",mw:13,cls:"LR",delivery:"2026-04-22",cutting:"01-19",welding:"01-26",di_start:"04-03",acid:"04-04",assembly:"04-08",fat_start:"04-10"},
+  {no:253,yard:"HD현대삼호",hull:"HSHI8323",mw:13,cls:"LR",delivery:"2026-05-04",cutting:"01-19",welding:"01-26",di_start:"04-17",acid:"04-18",assembly:"04-22",fat_start:"04-24"},
+  {no:254,yard:"SHI",hull:"SN2719",mw:12,cls:"LR",delivery:"2026-05-01",cutting:"02-23",welding:"03-03",di_start:"04-13",acid:"04-14",assembly:"04-20",fat_start:"04-22"},
+  {no:255,yard:"Jiangsu Yangzijiang Offshore",hull:"YZJ2023-1575",mw:9,cls:"LR",delivery:"2026-05-05",cutting:"02-23",welding:"03-03",di_start:"04-20",acid:"04-21",assembly:"04-27",fat_start:null},
+  {no:256,yard:"케이조선",hull:"S1964",mw:6,cls:"ABS",delivery:"2026-05-11",cutting:"03-16",welding:"03-23",di_start:"04-30",acid:"05-01",assembly:"05-06",fat_start:"05-08"},
+  {no:257,yard:"HD현대미포 주식회사",hull:"S574",mw:15,cls:"ABS",delivery:"2026-05-22",cutting:"03-03",welding:"03-09",di_start:"04-27",acid:"04-28",assembly:"05-04",fat_start:"05-11"},
+  {no:258,yard:"Jiangsu Yangzijiang Offshore",hull:"YZJ2024-1640",mw:9,cls:"LR",delivery:"2026-05-21",cutting:"03-23",welding:"03-30",di_start:"05-08",acid:"05-09",assembly:"05-13",fat_start:"05-19"},
+  {no:259,yard:"COSCO",hull:"N1201",mw:13,cls:"BV",delivery:"2026-06-08",cutting:"03-23",welding:"03-30",di_start:"05-21",acid:"05-22",assembly:"05-27",fat_start:null},
+  {no:260,yard:"케이조선",hull:"S1965",mw:6,cls:"ABS",delivery:"2026-06-18",cutting:"03-30",welding:"04-06",di_start:null,acid:null,assembly:null,fat_start:null},
+  {no:261,yard:"케이조선",hull:"S1966",mw:6,cls:"ABS",delivery:"2026-06-24",cutting:"04-20",welding:"04-27",di_start:null,acid:null,assembly:null,fat_start:null},
+];
+
+// ECS 공정현황 (20260320 기준 — 우성엔텍 SOx만)
+const ECS_DATA = [
+  {hull:"H5514",    yard:"한화오션",  maker:"우성엔텍",delivery:"2026-03-20",di:"3/3",  insp:"3/17", prog:1.00},
+  {hull:"S573",     yard:"HMD",      maker:"우성엔텍",delivery:"2026-04-10",di:"3/23", insp:"4/7",  prog:1.00},
+  {hull:"HSHI8322", yard:"HSHI",     maker:"우성엔텍",delivery:"2026-04-22",di:"4/3",  insp:"4/10", prog:1.00},
+  {hull:"SN2719",   yard:"SHI",      maker:"우성엔텍",delivery:"2026-05-01",di:"4/13", insp:"4/22", prog:1.00},
+  {hull:"HSHI8323", yard:"HSHI",     maker:"우성엔텍",delivery:"2026-05-04",di:"4/17", insp:"4/24", prog:1.00},
+  {hull:"YZJ2023-1575",yard:"Jiangsu",maker:"우성엔텍",delivery:"2026-05-05",di:"4/20",insp:"4/30", prog:1.00},
+  {hull:"S574",     yard:"HMD",      maker:"우성엔텍",delivery:"2026-05-22",di:"4/8",  insp:"5/11", prog:0.80},
+  {hull:"S1964",    yard:"케이조선", maker:"우성엔텍",delivery:"2026-05-11",di:"-",    insp:"-",    prog:0.60},
+  {hull:"YZJ2024-1640",yard:"Jiangsu",maker:"우성엔텍",delivery:"2026-05-21",di:"-",  insp:"-",    prog:0.50},
+];
+
+/* ══ 원가 구성 (캡처본 기준) ══ */
+const COST = [
+  {key:'material',label:'재료비',          sub:'6moly Coil 30.8%·Packing 15.1%·Pipe 5.7%·Nozzle 3.0%·Mist Elim 6.9%·도급자재 6.87%',pct:51.06,color:'#888780',step:null},
+  {key:'cutting', label:'절단 (Cutting)',  sub:'제작비 절단 19.02% — 레이저·가스절단·벤딩',                                           pct: 7.85,color:'#B4B2A9',step:'cutting'},
+  {key:'welding', label:'취부·용접',        sub:'제작비 취부 11.64%+용접 13.11% — 용접봉·가스 포함',                                  pct:19.86,color:'#63990A',step:'welding'},
+  {key:'di',      label:'VI/DI 검사',      sub:'제조경비 비파괴 3.26%+검사 2.87% (PT 100%·RT)',                                      pct: 3.80,color:'#378ADD',step:'di_start'},
+  {key:'acid',    label:'산처리 (Acid)',    sub:'제조경비 산세 4.74%+포장 7.39% — Acid Pickling',                                     pct: 5.60,color:'#85B7EB',step:'acid'},
+  {key:'assembly',label:'보온·조립·결선',   sub:'제조경비 보온 4.37%+운송 2.98%+조립·전기결선',                                       pct: 8.96,color:'#185FA5',step:'assembly'},
+  {key:'fat',     label:'FAT·관리비·이윤',  sub:'FAT검사·일반관리비 6.21%·이윤 5.17%',                                                pct: 2.87,color:'#0C447C',step:'fat_start'},
+];
+
+// MW → 표준 공수 (MH) 및 계약금액
+function stdMH(mw){ return Math.round(480 + (mw-10)*35); }
+function cAmt(mw){ return Math.round(Math.max(3000,7500+(mw-10)*700)/100)*100; }
+
+/* ══ HELPERS ══ */
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+// ── 동적 기간 변수 (필터로 변경됨)
+let ganttYear=2026, ganttMonFrom=1, ganttMonTo=6;
+let RS=new Date('2026-01-01');
+let RE=new Date('2026-06-30');
+let TDAYS=(RE-RS)/864e5;
+let TODPCT=(TODAY-RS)/864e5/TDAYS*100;
+let WEEK_PX=28; // 주차 1개 픽셀 너비 (기간에 따라 동적 변경)
+function calcWeekPx(totalMonths){
+  // 기간이 짧으면 넓게, 길면 좁게 — 최소 20px, 최대 60px
+  if(totalMonths<=2) return 58;
+  if(totalMonths<=3) return 50;
+  if(totalMonths<=4) return 42;
+  if(totalMonths<=6) return 34;
+  if(totalMonths<=8) return 28;
+  return 22;
+}
+
+function updateGanttRange(year,mf,mt){
+  ganttYear=year; ganttMonFrom=mf; ganttMonTo=mt;
+  RS=new Date(year,mf-1,1);
+  const lastDay=new Date(year,mt,0);
+  RE=new Date(year,mt-1,lastDay.getDate());
+  TDAYS=(RE-RS)/864e5+1;
+  TODPCT=(TODAY-RS)/864e5/TDAYS*100;
+  TODPCT=Math.max(-2,Math.min(102,TODPCT));
+  // 기간에 따라 주차 픽셀 동적 조정
+  WEEK_PX=calcWeekPx(mt-mf+1);
+  const infoEl=document.getElementById('ganttRangeInfo');
+  if(infoEl) infoEl.textContent=year+'년 '+mf+'월~'+mt+'월 | 주차당 '+WEEK_PX+'px';
+}
+
+function setGanttRange(year,mf,mt,btn){
+  document.querySelectorAll('.gf-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('gfYear').value=year;
+  document.getElementById('gfMonthFrom').value=mf;
+  document.getElementById('gfMonthTo').value=mt;
+  updateGanttRange(year,mf,mt);
+  renderAxis(); renderGantt(currentGanttData||DB); renderGCharts(currentGanttData||DB);
+}
+
+function applyCustomRange(){
+  document.querySelectorAll('.gf-btn').forEach(b=>b.classList.remove('active'));
+  const y=parseInt(document.getElementById('gfYear').value);
+  const mf=parseInt(document.getElementById('gfMonthFrom').value);
+  const mt=parseInt(document.getElementById('gfMonthTo').value);
+  if(mf>mt){alert('시작월이 종료월보다 클 수 없습니다.');return;}
+  updateGanttRange(y,mf,mt);
+  renderAxis(); renderGantt(currentGanttData||DB); renderGCharts(currentGanttData||DB);
+}
+let currentGanttData=null;
+const SC = {done:'#16a34a',active:'#d97706',before:'#9ca3af',late:'#dc2626',prog:'#2563eb',fab:'#d97706',plan:'#6b7280'};
+const SL = {done:'완료',active:'제작중',before:'제작전',late:'지연위험',prog:'진행중',fab:'제작중',plan:'예정'};
+Chart.defaults.font.family="'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+Chart.defaults.font.size=12; Chart.defaults.color='#6b7280';
+const GC='rgba(0,0,0,.04)';
+
+function p2d(s){ if(!s)return null; const d=new Date(s); return isNaN(d)?null:d; }
+function pct(d){ if(!d)return null; const v=(p2d(d)-RS)/864e5/TDAYS*100; return Math.max(0,Math.min(100,v)); }
+function dday(del){ if(!del)return null; return Math.round((p2d(del)-TODAY)/864e5); }
+function ddStr(del){
+  const d=dday(del); if(d===null)return '-';
+  if(d<0) return `D+${Math.abs(d)}`;
+  if(d===0) return 'D-Day';
+  return `D-${d}`;
+}
+function ddClass(del){
+  const d=dday(del); if(d===null)return '';
+  if(d<0) return 'dday-neg'; if(d<=7) return 'dday-warn'; return 'dday-pos';
+}
+function leadtime(r){
+  const start = r.cutting||r.di_start||r.welding||r.acid||r.assembly;
+  if(!start||!r.delivery) return null;
+  return Math.round((p2d(r.delivery)-p2d('2026-'+start))/864e5);
+}
+
+// 공정 날짜 기반 진행률 계산 (ECS 데이터 없을 때 fallback)
+// 각 공정의 날짜가 TODAY 이전이면 해당 비중만큼 집계
+function calcProcProg(r){
+  const now=new Date(); now.setHours(0,0,0,0);
+  function pd(s){
+    if(!s||s==='-') return null;
+    if(s.startsWith('2026')) return p2d(s);
+    if(s.includes('/')) return p2d('2026-'+s.replace('/','-'));
+    return p2d('2026-'+s);
+  }
+  const procMap={
+    cutting:  r.cutting,
+    welding:  r.welding,
+    di_start: r.di_start,
+    acid:     r.acid,
+    assembly: r.assembly,
+    fat_start:r.fat_start,
+  };
+  // 각 공정별 비중 (COST 배열 기준)
+  const procPct={
+    material: 51.06,  // 재료비: 첫 공정 착수 시 완료
+    cutting:   7.85,
+    welding:  19.86,
+    di_start:  3.80,
+    acid:      5.60,
+    assembly:  8.96,
+    fat_start: 2.87,
+  };
+  let total=0;
+  // 재료비: 첫 공정 착수 시 완료로 간주
+  const firstStart=pd(r.cutting||r.welding||r.di_start);
+  if(firstStart&&firstStart<=now) total+=procPct.material;
+  // 각 공정
+  Object.entries(procMap).forEach(([key,dateStr])=>{
+    const d=pd(dateStr);
+    if(d&&d<=now) total+=procPct[key]||0;
+  });
+  return Math.min(100,Math.round(total));
+}
+
+function getStatus(r){
+  const d=p2d(r.delivery);
+  if(d&&d<TODAY) return 'done';
+  // 공정 착수일 중 가장 빠른 것이 TODAY 이전이면 '제작중'
+  const firstStart = r.cutting||r.welding||r.di_start||r.acid||r.assembly||r.fat_start;
+  const ecsRow = ECS_DATA.find(e=>e.hull===r.hull);
+  if(ecsRow&&ecsRow.prog>0) return 'active';
+  if(firstStart&&p2d('2026-'+firstStart)<=TODAY) return 'active';
+  return 'before';
+}
+// 현재 진행 중인 공정 이름 반환
+function getCurrentProc(r){
+  const st=getStatus(r);
+  if(st==='done') return '완료';
+  if(st==='before') return '착수전';
+  const ecsRow=ECS_DATA.find(e=>e.hull===r.hull);
+  const prog=ecsRow?ecsRow.prog:0;
+  // ECS DI/검사 날짜로 현재 공정 판단
+  if(r.fat_start&&p2d('2026-'+r.fat_start)<=TODAY) return 'FAT';
+  if(r.assembly&&p2d('2026-'+r.assembly)<=TODAY) return '보온·조립';
+  if(r.acid&&p2d('2026-'+r.acid)<=TODAY) return '산처리';
+  if(ecsRow&&ecsRow.di&&ecsRow.di!=='-'){
+    const diDate=p2d('2026-'+ecsRow.di);
+    if(diDate&&diDate<=TODAY) return 'VI/DI';
+  }
+  if(r.welding&&p2d('2026-'+r.welding)<=TODAY) return '취부·용접';
+  if(r.cutting&&p2d('2026-'+r.cutting)<=TODAY) return '절단';
+  return '제작중';
+}
+function getECSProg(r){
+  const e=ECS_DATA.find(e=>e.hull===r.hull||e.hull===String(r.no));
+  return e?e.prog:null;
+}
+
+/* ══ STATE ══ */
+let DB=[...SCHEDULE_DATA], ECSDB=[...ECS_DATA];
+let activeTab=1, gfil='all', cfil='all', selNo=null;
+let charts={};
+
+/* ══ KPI ══ */
+function renderKPI(){
+  const tot=DB.length;
+  const done=DB.filter(r=>getStatus(r)==='done').length;
+  const active=DB.filter(r=>getStatus(r)==='active').length;
+  const plan=DB.filter(r=>getStatus(r)==='before').length;
+  const late=DB.filter(r=>{ const d=dday(r.delivery); return d!==null&&d<0&&getStatus(r)!=='done'; }).length;
+  const mwSum=DB.reduce((s,r)=>s+r.mw,0);
+  const amtSum=DB.reduce((s,r)=>s+cAmt(r.mw),0);
+  const ecsProg=ECSDB.filter(r=>r.prog>0&&r.prog<1).length;
+  // 납기준수율: 완료 호선 중 FAT 완료일 ≤ 납기일 인 건
+  const doneList=DB.filter(r=>getStatus(r)==='done');
+  const onTime=doneList.filter(r=>{
+    const delDate=p2d(r.delivery);
+    if(!delDate) return false;
+    // FAT 완료일이 있으면 FAT vs 납기 비교
+    if(r.fat_start){
+      const fatStr=r.fat_start.startsWith('2026')?r.fat_start:'2026-'+r.fat_start;
+      const fatDate=p2d(fatStr);
+      return fatDate && fatDate<=delDate;
+    }
+    // FAT 없으면 assembly(보온조립) vs 납기 비교
+    if(r.assembly){
+      const asmStr=r.assembly.startsWith('2026')?r.assembly:'2026-'+r.assembly;
+      const asmDate=p2d(asmStr);
+      return asmDate && asmDate<=delDate;
+    }
+    // 날짜 정보 없으면 준수로 간주
+    return true;
+  }).length;
+  const onTimeRate=doneList.length>0?Math.round(onTime/doneList.length*100):'-';
+
+  document.getElementById('kpiRow').innerHTML=`
+    <div class="kpi blue"><div class="lbl">총 프로젝트</div><div class="val" style="color:var(--blue3)">${tot}</div><div class="sub">건 (2026년 전체)</div></div>
+    <div class="kpi green"><div class="lbl">납기 완료</div><div class="val" style="color:var(--green)">${done}</div><div class="sub">건 납기 완료</div></div>
+    <div class="kpi amber"><div class="lbl">제작중</div><div class="val" style="color:var(--amber)">${active}</div><div class="sub">건 현재 진행</div></div>
+    <div class="kpi gray"><div class="lbl">예정</div><div class="val" style="color:var(--gray)">${plan}</div><div class="sub">건 제작 전</div></div>
+    <div class="kpi red"><div class="lbl">⚠ 지연 위험</div><div class="val" style="color:var(--red)">${late}</div><div class="sub">D-7 이내</div></div>
+    <div class="kpi teal"><div class="lbl">총 처리 용량</div><div class="val" style="color:var(--teal)">${mwSum}</div><div class="sub">MW 합산</div></div>
+    <div class="kpi purple"><div class="lbl">납기 준수율</div><div class="val" style="color:var(--purple)">${onTimeRate}<span style="font-size:15px;font-weight:600">%</span></div><div class="sub">완료 ${doneList.length}건 기준</div></div>
+    <div class="kpi coral"><div class="lbl">총 계약금액(추정)</div><div class="val" style="color:var(--coral);font-size:20px">${(amtSum/10000).toFixed(1)}<span style="font-size:14px;font-weight:400">억원</span></div><div class="sub">MW 단가 기준</div></div>
+  `;
+}
+
+/* ══ GANTT ══ */
+function renderAxis(){
+  // 신버전: ganttMonthRow / ganttWeekRow DOM 기반 (픽셀 단위)
+  const elMonth=document.getElementById('ganttMonthRow');
+  const elWeek=document.getElementById('ganttWeekRow');
+  if(!elMonth||!elWeek) return; // DOM 미준비 시 무시
+
+  function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+  const monthNames=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+  let weekSegs=[], moSegs=[];
+  for(let mo=ganttMonFrom;mo<=ganttMonTo;mo++){
+    const totalDays=daysInMonth(ganttYear,mo);
+    let d=0,w=1,moPx=0;
+    while(d<totalDays){
+      const wdays=Math.min(7,totalDays-d);
+      weekSegs.push({mo,label:monthNames[mo-1],wn:w,days:wdays,isFirst:w===1});
+      d+=wdays; w++; moPx+=WEEK_PX;
+    }
+    moSegs.push({label:monthNames[mo-1],px:moPx});
+  }
+  const totalPx=weekSegs.length*WEEK_PX;
+
+  elMonth.innerHTML=moSegs.map(m=>
+    `<div class="gantt-tl-month" style="width:${m.px}px">${m.label}</div>`
+  ).join('');
+  elMonth.style.minWidth=totalPx+'px';
+
+  elWeek.innerHTML=weekSegs.map(w=>
+    `<div class="gantt-tl-week${w.isFirst?' w1':''}" style="width:${WEEK_PX}px">${'W'+w.wn}</div>`
+  ).join('');
+  elWeek.style.minWidth=totalPx+'px';
+
+  // ganttBody 너비 동기화
+  const body=document.getElementById('ganttBody');
+  if(body) body.style.minWidth=totalPx+'px';
+
+  window._ganttWeekSegs=weekSegs;
+  window._ganttTotalPx=totalPx;
+}
+function renderLegend(){
+  const procItems=[
+    {c:'b-cut',l:'절단'},{c:'b-weld',l:'취부/용접'},{c:'b-di',l:'VI/DI'},
+    {c:'b-acid',l:'산처리'},{c:'b-asm',l:'보온/조립'},{c:'b-fat',l:'FAT'},
+    {c:'b-plan-bar',l:'제작전(예정)'},
+  ];
+  const statusItems=[
+    {bg:'#dcfce7',fg:'#14532d',l:'완료'},
+    {bg:'#fef3c7',fg:'#92400e',l:'제작중'},
+    {bg:'#f3f4f6',fg:'#6b7280',l:'제작전'},
+  ];
+  const legEl=document.getElementById('legendEl'); if(!legEl) return; legEl.innerHTML=
+    `<span style="font-size:11px;font-weight:800;color:#6b7280;margin-right:4px">공정</span>`+
+    procItems.map(i=>`<div class="li"><div class="lsw ${i.c}"></div>${i.l}</div>`).join('')+
+    `<span style="font-size:11px;font-weight:800;color:#6b7280;margin:0 4px 0 14px">상태</span>`+
+    statusItems.map(i=>`<div class="li"><span style="background:${i.bg};color:${i.fg};font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px">${i.l}</span></div>`).join('')+
+    `<div class="li" style="margin-left:12px"><span style="display:inline-block;width:2px;height:12px;background:#ef4444;border-radius:1px;margin-right:5px;vertical-align:middle"></span>TODAY(누적금액)</div>
+     <div class="li"><span style="display:inline-block;width:3px;height:12px;background:#374151;border-radius:1px;margin-right:5px;vertical-align:middle"></span>납기일</div>
+     <div class="li" style="font-size:11px;color:#9ca3af;margin-left:8px">※ 행 클릭 → 원가 탭</div>`;
+}
+function renderGantt(data){
+  currentGanttData=data;
+  if(!window._ganttWeekSegs) renderAxis();
+  const weekSegs=window._ganttWeekSegs;
+  const totalPx=window._ganttTotalPx;
+  const PX_PER_DAY=WEEK_PX/7;
+
+  function dateToPx(dateStr){
+    if(!dateStr) return null;
+    let d;
+    if(typeof dateStr==='string'){
+      if(dateStr.startsWith(String(ganttYear))) d=p2d(dateStr);
+      else if(dateStr.includes('-')) d=p2d(ganttYear+'-'+dateStr);
+      else if(dateStr.includes('/')) d=p2d(ganttYear+'-'+dateStr.replace('/','-'));
+      else d=null;
+    } else d=dateStr;
+    if(!d||isNaN(d)) return null;
+    const diff=(d-RS)/864e5;
+    return diff*PX_PER_DAY;
+  }
+  function clampPx(px){ return Math.max(0,Math.min(totalPx,px)); }
+
+  // 공정 세그먼트
+  const segs=[
+    {s:'cutting',  e:'welding',   c:'#d1d5db', label:'절단'},
+    {s:'welding',  e:'di_start',  c:'#84cc16', label:'취부·용접'},
+    {s:'di_start', e:'acid',      c:'#93c5fd', label:'VI/DI'},
+    {s:'acid',     e:'assembly',  c:'#38bdf8', label:'산처리'},
+    {s:'assembly', e:'fat_start', c:'#3b82f6', label:'보온·조립'},
+    {s:'fat_start',e:'delivery',  c:'#1d4ed8', label:'FAT'},
+  ];
+  function to26(s){ return s?(s.startsWith(String(ganttYear))?s:ganttYear+'-'+s):null; }
+
+  // 누적금액
+  const accumAmt=DB.reduce((sum,r)=>{
+    const st=getStatus(r);
+    if(st==='done') return sum+cAmt(r.mw);
+    const ep=getECSProg(r);
+    if(ep!==null) return sum+Math.round(cAmt(r.mw)*ep);
+    return sum;
+  },0);
+
+  const todayPx=clampPx(dateToPx(TODAY.toISOString().slice(0,10)));
+
+  // 고정 컬럼 + 타임라인 행 각각 생성
+  let fixedRows='', timelineRows='';
+
+  data.forEach(r=>{
+    const st=getStatus(r), sc=SC[st]||'#9ca3af';
+    const ecsRow=ECS_DATA.find(e=>e.hull===r.hull);
+    const prog=ecsRow?ecsRow.prog:null;
+    const progPct=prog!==null?Math.round(prog*100):(st==='done'?100:calcProcProg(r));
+    const curProc=getCurrentProc(r);
+    const bdgCls=st==='done'?'b-done2':st==='active'?'b-active':'b-before';
+    const procColor=st==='done'?'#16a34a':st==='active'?'#d97706':'#9ca3af';
+
+    // 고정 컬럼 행
+    fixedRows+=`<div class="gantt-fixed-row" onclick="rowClick(${r.no})" style="cursor:pointer">
+      <div class="gfc-no">${r.no}</div>
+      <div class="gfc-yard" title="${r.yard}">${r.yard.slice(0,11)}</div>
+      <div class="gfc-hull" title="${r.hull}">${r.hull.slice(0,13)}</div>
+      <div class="gfc-mw" style="color:${sc}">${r.mw}</div>
+      <div class="gfc-cls">${r.cls}</div>
+      <div class="gfc-st"><span class="bdg ${bdgCls}">${SL[st]}</span></div>
+      <div class="gfc-pg">
+        <div style="display:flex;align-items:center;gap:4px;white-space:nowrap">
+          <div class="prog-wrap" style="height:5px;min-width:36px;max-width:46px;flex-shrink:0"><div class="prog-fill" style="width:${progPct}%;background:${procColor}"></div></div>
+          <span style="font-size:11px;color:${procColor};font-weight:800;min-width:32px">${progPct}%</span>
+        </div>
+        ${st==='active'?`<span style="font-size:10px;color:#92400e;background:#fef3c7;padding:1px 7px;border-radius:8px;font-weight:700;white-space:nowrap;display:inline-block;max-width:104px;overflow:hidden;text-overflow:ellipsis">${curProc}</span>`:''}
+      </div>
+    </div>`;
+
+    // 타임라인 행 (픽셀 기반 절대 위치)
+    let bars='';
+    const firstStart=to26(r.cutting||r.welding||r.di_start||r.acid||r.assembly||r.fat_start);
+    const delivPx=dateToPx(r.delivery);
+
+    if(st==='before'&&firstStart){
+      const sx=clampPx(dateToPx(firstStart));
+      const ex=delivPx!=null?clampPx(delivPx):totalPx;
+      const w=Math.max(3,ex-sx);
+      bars+=`<div style="position:absolute;left:${sx}px;width:${w}px;top:8px;bottom:8px;background:#86efac;border-radius:3px;opacity:.75"></div>`;
+    } else {
+      segs.forEach(seg=>{
+        const sv=to26(r[seg.s]);
+        const ev=to26(r[seg.e])||r.delivery;
+        const sx=dateToPx(sv), ex=dateToPx(ev);
+        if(sx==null) return;
+        const x=clampPx(sx);
+        const w=Math.max(3,clampPx(ex!=null?ex:(sx+PX_PER_DAY*5))-x);
+        const op=st==='done'?'opacity:.38;':'';
+        bars+=`<div style="position:absolute;left:${x}px;width:${w}px;top:8px;bottom:8px;background:${seg.c};border-radius:3px;${op}"></div>`;
+      });
+    }
+    // 납기 마커
+    if(delivPx!=null){
+      const dx=clampPx(delivPx);
+      bars+=`<div style="position:absolute;left:${dx}px;width:3px;top:2px;bottom:2px;background:${sc};border-radius:2px"></div>`;
+    }
+    // TODAY 라인
+    bars+=`<div style="position:absolute;left:${todayPx}px;width:2px;top:0;bottom:0;background:#ef4444;opacity:.9;z-index:5"></div>`;
+
+    timelineRows+=`<div style="position:relative;height:48px;border-bottom:1px solid var(--border2);" onmouseover="this.style.background='#fafbff'" onmouseout="this.style.background=''">${bars}</div>`;
+  });
+
+  const gfb=document.getElementById('ganttFixedBody'); if(gfb) gfb.innerHTML=fixedRows;
+  const gb=document.getElementById('ganttBody'); if(gb){gb.innerHTML=timelineRows;gb.style.minWidth=totalPx+'px';}
+
+  // 헤더와 바디 가로 스크롤 동기화
+  const scrollBody=document.getElementById('ganttScrollBody');
+  const axisWrap=document.getElementById('ganttAxisWrap');
+  if(scrollBody&&axisWrap){
+    scrollBody.onscroll=()=>{ axisWrap.scrollLeft=scrollBody.scrollLeft; };
+  }
+
+  // 고정 컬럼과 스크롤 바디 세로 스크롤 동기화
+  const bodyWrap=document.getElementById('ganttBodyWrap');
+  const fixedBody=document.getElementById('ganttFixedBody');
+  if(bodyWrap&&fixedBody){
+    bodyWrap.onscroll=()=>{ fixedBody.scrollTop=bodyWrap.scrollTop; };
+  }
+
+  // TODAY 누적금액 라벨 — 첫 번째 행의 타임라인 위에 배치
+  setTimeout(()=>{
+    const firstGT = document.querySelector('.gantt-timeline-wrap');
+    if(!firstGT) return;
+    // 기존 라벨 제거
+    document.querySelectorAll('.today-accum').forEach(e=>e.remove());
+    const lbl=document.createElement('div');
+    lbl.className='today-accum';
+    lbl.style.cssText=`position:absolute;top:-28px;left:calc(${TODPCT.toFixed(2)}% + 8px);transform:translateX(-50%);
+      background:#ef4444;color:#fff;font-size:11px;font-weight:800;padding:3px 9px;
+      border-radius:6px;white-space:nowrap;z-index:30;pointer-events:none;line-height:1.4;
+      box-shadow:0 2px 8px rgba(239,68,68,.35)`;
+    lbl.innerHTML=`TODAY ▼<br>${(accumAmt/10000).toFixed(1)}억 누적`;
+    firstGT.style.position='relative';
+    firstGT.appendChild(lbl);
+  },50);
+}
+function rowClick(no){ sw(3); setTimeout(()=>selProj(no),60); }
+
+function renderGCharts(data){
+  // ── 월별 납기 건수
+  const mo=[0,0,0,0,0,0];
+  data.forEach(r=>{const d=p2d(r.delivery);if(d&&d.getFullYear()===2026&&d.getMonth()<6)mo[d.getMonth()]++;});
+  const ym={};data.forEach(r=>{ym[r.yard.slice(0,8)]=(ym[r.yard.slice(0,8)]||0)+1;});
+  const yards=Object.entries(ym).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  if(charts.del)charts.del.destroy();
+  charts.del=new Chart(document.getElementById('cDel'),{type:'bar',
+    data:{labels:['1월','2월','3월','4월','5월','6월'],datasets:[{data:mo,
+      backgroundColor:mo.map((_,i)=>i<=2?'rgba(37,99,235,.55)':'rgba(37,99,235,.25)'),borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:GC}},y:{grid:{color:GC},ticks:{stepSize:1}}}}});
+  if(charts.yard)charts.yard.destroy();
+  charts.yard=new Chart(document.getElementById('cYard'),{type:'bar',
+    data:{labels:yards.map(y=>y[0]),datasets:[{data:yards.map(y=>y[1]),
+      backgroundColor:'rgba(37,99,235,.5)',borderRadius:4,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:GC},ticks:{stepSize:1}},y:{grid:{color:GC},ticks:{font:{size:11}}}}}});
+
+}
+
+/* ── 주간별 공정 완료 현황 데이터 생성 ── */
+let wpViewMode='chart'; // 'chart' | 'table'
+
+function buildWeekProcData(){
+  const procDefs=[
+    {key:'cutting',   label:'절단',      color:'#d1d5db'},
+    {key:'welding',   label:'취부·용접', color:'#84cc16'},
+    {key:'di_start',  label:'VI/DI',     color:'#93c5fd'},
+    {key:'acid',      label:'산처리',    color:'#38bdf8'},
+    {key:'assembly',  label:'보온·조립', color:'#3b82f6'},
+    {key:'fat_start', label:'FAT',       color:'#1d4ed8'},
+  ];
+  const wpYear=parseInt(document.getElementById('wpYearSel')?.value||2026);
+  const wpMon=parseInt(document.getElementById('wpMonSel')?.value||0);
+
+  // 기간 설정
+  const yearStart=new Date(wpYear,0,1);
+  const yearEnd=new Date(wpYear,11,31);
+  const filterMon=wpMon>0?wpMon:null;
+
+  // 주차 생성
+  const wkLabels=[], wkStarts=[], wkMons=[];
+  let cur=new Date(yearStart);
+  let curMo=1, wn=1, prevMo=1;
+  while(cur<=yearEnd){
+    const m=cur.getMonth()+1;
+    if(filterMon&&m!==filterMon){cur.setDate(cur.getDate()+7);if(m!==prevMo){wn=1;prevMo=m;}else wn++;continue;}
+    if(m!==prevMo){wn=1;prevMo=m;}
+    wkLabels.push(`${m}월W${wn}`);
+    wkStarts.push(new Date(cur));
+    wkMons.push(m);
+    cur.setDate(cur.getDate()+7);
+    wn++;
+  }
+
+  // 공정별 건수 집계
+  const procCounts=procDefs.map(pd=>{
+    return wkStarts.map((ws)=>{
+      const we=new Date(ws); we.setDate(we.getDate()+6);
+      return DB.filter(r=>{
+        let ds=r[pd.key]; if(!ds) return false;
+        if(!ds.startsWith(String(wpYear))) ds=wpYear+'-'+ds;
+        const d=p2d(ds);
+        return d&&d>=ws&&d<=we;
+      }).length;
+    });
+  });
+
+  return {procDefs,wkLabels,wkStarts,procCounts};
+}
+
+function switchWeekProcView(mode){
+  wpViewMode=mode;
+  document.getElementById('wpBtnChart').style.background=mode==='chart'?'var(--blue3)':'#fff';
+  document.getElementById('wpBtnChart').style.color=mode==='chart'?'#fff':'var(--text2)';
+  document.getElementById('wpBtnChart').style.borderColor=mode==='chart'?'var(--blue3)':'var(--border)';
+  document.getElementById('wpBtnTable').style.background=mode==='table'?'var(--blue3)':'#fff';
+  document.getElementById('wpBtnTable').style.color=mode==='table'?'#fff':'var(--text2)';
+  document.getElementById('wpBtnTable').style.borderColor=mode==='table'?'var(--blue3)':'var(--border)';
+  document.getElementById('wpChartView').style.display=mode==='chart'?'':'none';
+  document.getElementById('wpTableView').style.display=mode==='table'?'':'none';
+  renderWeekProcView();
+}
+
+function renderWeekProcView(){
+  const {procDefs,wkLabels,wkStarts,procCounts}=buildWeekProcData();
+
+  if(wpViewMode==='chart'){
+    const wpEl=document.getElementById('cWeekProc');
+    if(!wpEl) return;
+    if(charts.weekProc) charts.weekProc.destroy();
+    charts.weekProc=new Chart(wpEl,{
+      type:'bar',
+      data:{labels:wkLabels,datasets:procDefs.map((pd,i)=>({
+        label:pd.label,data:procCounts[i],backgroundColor:pd.color,borderRadius:2,borderSkipped:false
+      }))},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{
+          legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:12,padding:12}},
+          tooltip:{callbacks:{title:ctx=>ctx[0].label,label:ctx=>`${ctx.dataset.label}: ${ctx.raw}건`}}
+        },
+        scales:{
+          x:{stacked:true,grid:{color:GC},ticks:{font:{size:10},maxRotation:45,autoSkip:false}},
+          y:{stacked:true,grid:{color:GC},ticks:{stepSize:1,font:{size:11}},
+             title:{display:true,text:'완료 건수',font:{size:11},color:'#6b7280'}}
+        }
+      }
+    });
+  } else {
+    // 테이블 뷰 — 주차×공정 격자
+    const procNames=procDefs.map(p=>p.label);
+    const procColors=procDefs.map(p=>p.color);
+    // 헤더
+    document.getElementById('wpTableHead').innerHTML=`<tr style="position:sticky;top:0;z-index:5;background:#f9fafb">
+      <th style="padding:8px 12px;border-bottom:2px solid #e5e7eb;font-size:11px;font-weight:800;color:#374151;text-align:left;white-space:nowrap">주차</th>
+      <th style="padding:8px 12px;border-bottom:2px solid #e5e7eb;font-size:11px;font-weight:800;color:#374151;text-align:center">합계</th>
+      ${procDefs.map((pd,i)=>`<th style="padding:8px 12px;border-bottom:2px solid #e5e7eb;font-size:11px;font-weight:800;text-align:center;white-space:nowrap">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${pd.color};margin-right:4px;vertical-align:middle"></span>${pd.label}
+      </th>`).join('')}
+    </tr>`;
+    // 바디
+    document.getElementById('wpTableBody').innerHTML=wkLabels.map((wk,wi)=>{
+      const rowVals=procDefs.map((_,pi)=>procCounts[pi][wi]);
+      const total=rowVals.reduce((a,b)=>a+b,0);
+      if(total===0) return ''; // 데이터 없는 주차 숨김
+      return `<tr style="transition:background .1s" onmouseover="this.style.background='#fafbff'" onmouseout="this.style.background=''">
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f1f4;font-weight:700;font-size:12px;white-space:nowrap">${wk}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #f0f1f4;text-align:center;font-weight:800;font-size:13px;color:#374151">${total}</td>
+        ${rowVals.map((v,pi)=>`<td style="padding:8px 12px;border-bottom:1px solid #f0f1f4;text-align:center;font-size:12px">
+          ${v>0?`<span style="display:inline-block;background:${procColors[pi]}22;color:#374151;border:1px solid ${procColors[pi]}66;border-radius:12px;padding:1px 10px;font-weight:700;font-size:12px">${v}</span>`:'<span style="color:#d1d5db">-</span>'}
+        </td>`).join('')}
+      </tr>`;
+    }).join('');
+  }
+}
+
+/* ══ TAB 2: ECS 공정현황 ══ */
+function renderECS(){
+  // table
+  document.getElementById('ecsBody').innerHTML=ECSDB.map(r=>{
+    const d=dday(r.delivery); const dc=ddClass(r.delivery);
+    const pct_=Math.round(r.prog*100);
+    const stBg=r.prog>=1?'#eaf3de':r.prog>=0.7?'#e6f1fb':r.prog>=0.4?'#faeeda':'#f1efe8';
+    const stFg=r.prog>=1?'#14532d':r.prog>=0.7?'#1e3a8a':r.prog>=0.4?'#78350f':'#374151';
+    return `<tr>
+      <td style="font-size:13px;font-weight:700;white-space:nowrap">${r.hull}</td>
+      <td style="font-size:12px;color:#5a5c66;white-space:nowrap">${r.yard}</td>
+      <td style="font-size:12px;white-space:nowrap">${r.maker}</td>
+      <td style="font-size:12px;white-space:nowrap;text-align:center">${r.delivery.slice(5)}</td>
+      <td style="font-size:12px;white-space:nowrap;text-align:center">${r.di}</td>
+      <td style="font-size:12px;white-space:nowrap;text-align:center">${r.insp}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px">
+          <div class="prog-wrap"><div class="prog-fill" style="width:${pct_}%;background:${r.prog>=1?'#16a34a':r.prog>=0.5?'#2563eb':'#d97706'}"></div></div>
+          <span style="font-size:12px;font-weight:700;min-width:34px;background:${stBg};color:${stFg};padding:2px 7px;border-radius:5px;font-weight:700">${pct_}%</span>
+        </div>
+      </td>
+      <td class="${dc}" style="font-weight:800;text-align:right">${ddStr(r.delivery)}</td>
+      <td><span class="bdg" style="background:${stBg};color:${stFg}">${r.prog>=1?'완료':r.prog>=0.5?'진행중':'제작중'}</span></td>
+    </tr>`;
+  }).join('');
+
+  // progress chart
+  const bins=[0,0,0,0,0]; // 0-20,20-40,40-60,60-80,80-100
+  ECSDB.forEach(r=>{const p=r.prog*100;bins[Math.min(4,Math.floor(p/20))]++;});
+  if(charts.prog)charts.prog.destroy();
+  charts.prog=new Chart(document.getElementById('cProg'),{type:'bar',
+    data:{labels:['0-20%','20-40%','40-60%','60-80%','80-100%'],datasets:[{
+      data:bins,backgroundColor:['#94a3b8','#fb923c','#facc15','#60a5fa','#2563eb'],
+      borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:GC}},y:{grid:{color:GC},ticks:{stepSize:1}}}}});
+
+  // on-time chart
+  const doneItems=DB.filter(r=>getStatus(r)==='done');
+  const onT=doneItems.filter(r=>{
+    const delDate=p2d(r.delivery); if(!delDate) return true;
+    if(r.fat_start){
+      const fs=r.fat_start.startsWith('2026')?r.fat_start:'2026-'+r.fat_start;
+      const fd=p2d(fs); return fd&&fd<=delDate;
+    }
+    if(r.assembly){
+      const as=r.assembly.startsWith('2026')?r.assembly:'2026-'+r.assembly;
+      const ad=p2d(as); return ad&&ad<=delDate;
+    }
+    return true;
+  }).length;
+  const offT=doneItems.length-onT;
+  if(charts.ontime)charts.ontime.destroy();
+  charts.ontime=new Chart(document.getElementById('cOnTime'),{type:'doughnut',
+    data:{labels:['납기 준수','납기 지연'],datasets:[{data:[onT,offT],
+      backgroundColor:['#3b6d11','#e24b4a'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
+      plugins:{legend:{position:'bottom',labels:{font:{size:12},boxWidth:10,padding:6}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw}건`}}}}});
+
+  // maker chart
+  const makerMap={};
+  ECSDB.forEach(r=>{
+    if(!makerMap[r.maker]) makerMap[r.maker]={sum:0,cnt:0};
+    makerMap[r.maker].sum+=r.prog; makerMap[r.maker].cnt++;
+  });
+  const makers=Object.entries(makerMap).map(([k,v])=>({k,avg:Math.round(v.sum/v.cnt*100)}));
+  if(charts.maker)charts.maker.destroy();
+  charts.maker=new Chart(document.getElementById('cMaker'),{type:'bar',
+    data:{labels:makers.map(m=>m.k),datasets:[{label:'평균 공정률(%)',data:makers.map(m=>m.avg),
+      backgroundColor:'rgba(56,122,221,.6)',borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:GC}},y:{grid:{color:GC},max:100,ticks:{callback:v=>v+'%'}}}}});
+}
+
+/* ══ TAB 3: 원가 ══ */
+function costData(){
+  if(cfil==='all') return DB;
+  if(cfil==='done') return DB.filter(r=>getStatus(r)==='done');
+  if(cfil==='active') return DB.filter(r=>getStatus(r)==='active');
+  return DB.filter(r=>getStatus(r)==='plan');
+}
+function renderCostList(){
+  const d=costData();
+  document.getElementById('costList').innerHTML=d.map(r=>{
+    const st=getStatus(r),amt=cAmt(r.mw);
+    const ecsp=getECSProg(r);
+    // ECS 공정률 있으면 우선 사용, 없으면 공정 날짜 기반 집계
+    const pg=ecsp!==null?Math.round(ecsp*100):(st==='done'?100:calcProcProg(r));
+    const sel=selNo===r.no?' sel':'';
+    return `<div class="cpl${sel}" onclick="selProj(${r.no})">
+      <div style="font-size:11px;font-weight:700">${r.hull}</div>
+      <div style="font-size:10px;color:#6b7280">${r.yard}</div>
+      <div style="display:flex;gap:5px;margin-top:3px;align-items:center">
+        <span class="bdg b-${st==='done'?'done2':st}">${SL[st]}</span>
+        <span style="font-size:9px;color:#6b7280">${r.mw}MW · ${(amt/10000).toFixed(1)}억</span>
+        <span style="margin-left:auto;font-size:9px;color:${SC[st]};font-weight:800">${pg}%</span>
+      </div>
+      <div style="height:3px;background:#f0efe8;border-radius:2px;margin-top:4px;overflow:hidden">
+        <div style="height:100%;width:${pg}%;background:${SC[st]};border-radius:2px"></div>
+      </div>
+    </div>`;
+  }).join('')||'<div style="padding:14px;color:#c4c2ba;text-align:center;font-size:11px">항목 없음</div>';
+}
+function selProj(no){
+  selNo=no; renderCostList();
+  const r=DB.find(d=>d.no===no); if(!r) return;
+  const amt=cAmt(r.mw);
+  const st=getStatus(r);
+  const ecsp=getECSProg(r);
+  const pg=ecsp!==null?Math.round(ecsp*100):(st==='done'?100:calcProcProg(r));
+  const TODAY_=new Date();TODAY_.setHours(0,0,0,0);
+
+  // 공정 날짜 파싱 헬퍼
+  function procDate(dateStr){
+    if(!dateStr||dateStr==='-') return null;
+    // YYYY-MM-DD 또는 MM/DD 또는 MM-DD 형식 처리
+    if(dateStr.startsWith('2026')) return p2d(dateStr);
+    if(dateStr.includes('/')) return p2d('2026-'+dateStr.replace('/','-'));
+    return p2d('2026-'+dateStr);
+  }
+
+  // ECS 데이터에서 해당 호선의 DI/검사 날짜 가져오기
+  const ecsRow_=ECSDB.find(e=>e.hull===r.hull);
+
+  // 공정별 상태 판별: 'done'(완료) / 'active'(진행중) / 'plan'(예정)
+  // 로직: 해당 공정의 날짜가 TODAY_ 이전이면 완료, 다음 공정이 시작 전이면 진행중
+  function getStepStatus(stepKey, nextStepKey){
+    if(st==='done') return 'done';
+    if(!stepKey) {
+      // 재료비: 첫 공정(cutting/welding) 착수 전이면 예정, 착수 후면 완료
+      const firstStart = r.cutting||r.welding||r.di_start;
+      if(!firstStart) return 'plan';
+      const fd = procDate(firstStart);
+      return (fd&&fd<=TODAY_)?'done':'plan';
+    }
+    const stepVal = r[stepKey];
+    const stepDateStr = stepVal || (ecsRow_&&(stepKey==='di_start'?ecsRow_.di:stepKey==='fat_start'?ecsRow_.insp:null));
+    const stepDate = procDate(stepDateStr);
+    if(!stepDate) return 'plan';
+    if(stepDate <= TODAY_){
+      // 이 공정 날짜가 지났으면 완료
+      return 'done';
+    } else {
+      // 날짜가 아직 안 됐으면 예정
+      return 'plan';
+    }
+  }
+
+  // 현재 진행 중인 공정 찾기 (직전 공정 완료, 다음 공정 미완료)
+  const procKeys=['cutting','welding','di_start','acid','assembly','fat_start'];
+  function isCurrentProc(stepKey){
+    if(st==='done'||st==='before') return false;
+    if(!stepKey) return false;
+    const idx = procKeys.indexOf(stepKey);
+    if(idx<0) return false;
+    // 이 공정 날짜가 TODAY_ 이하이고, 다음 공정 날짜가 TODAY_ 초과이면 진행중
+    const thisDate = procDate(r[stepKey]||(ecsRow_&&stepKey==='di_start'?ecsRow_.di:null));
+    if(!thisDate||thisDate>TODAY_) return false;
+    const nextKey = procKeys[idx+1];
+    if(!nextKey) return true; // 마지막 공정
+    const nextDate = procDate(r[nextKey]||(ecsRow_&&nextKey==='fat_start'?ecsRow_.insp:null));
+    return !nextDate || nextDate > TODAY_;
+  }
+
+  const steps=COST.map(c=>{
+    const stepStatus = getStepStatus(c.step, null);
+    const isCurr = isCurrentProc(c.step);
+    // 진행중 판별: 이 공정 날짜는 지났지만 다음 공정은 아직
+    const finalStatus = isCurr ? 'active' : stepStatus;
+
+    const costAmt=Math.round(amt*c.pct/100);
+    // 날짜 표시: 원본 날짜 또는 ECS에서 가져옴
+    let dvRaw = c.step?r[c.step]:null;
+    if(!dvRaw && ecsRow_ && c.step==='di_start') dvRaw=ecsRow_.di;
+    if(!dvRaw && ecsRow_ && c.step==='fat_start') dvRaw=ecsRow_.insp;
+    const dv = dvRaw&&dvRaw!=='-'?dvRaw:'-';
+
+    // 집행금액: 완료(done)면 전액, 진행중(active)이면 50% 반영
+    const paid = finalStatus==='done'?costAmt : finalStatus==='active'?Math.round(costAmt*0.5):0;
+    return{...c, stepStatus:finalStatus, isCurr, costAmt, dv, paid};
+  });
+
+  const total=steps.reduce((s,c)=>s+c.costAmt,0);
+  const paid=steps.reduce((s,c)=>s+c.paid,0);
+  const remain=total-paid;
+  document.getElementById('costDetail').innerHTML=`
+    <div style="font-size:14px;font-weight:800;margin-bottom:2px">No.${r.no} · ${r.hull}</div>
+    <div style="font-size:10px;color:#6b7280;margin-bottom:12px">${r.yard} | ${r.mw}MW | ${r.cls} | 납기: ${r.delivery} | 진행률: ${pg}%</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px">
+      <div style="background:#fafbff;border-radius:7px;padding:9px 11px">
+        <div style="font-size:9px;color:#6b7280;font-weight:800;text-transform:uppercase;margin-bottom:3px">계약금액(추정)</div>
+        <div style="font-size:18px;font-weight:800;color:#2563eb">${(amt/10000).toFixed(1)}<span style="font-size:13px;font-weight:400">억원</span></div>
+        <div style="font-size:13px;font-weight:700;color:#1a1b1e;margin-top:3px">${amt.toLocaleString()}만원</div>
+      </div>
+      <div style="background:#fafbff;border-radius:7px;padding:9px 11px">
+        <div style="font-size:9px;color:#6b7280;font-weight:800;text-transform:uppercase;margin-bottom:3px">집행(완료) 금액</div>
+        <div style="font-size:18px;font-weight:800;color:#16a34a">${(paid/10000).toFixed(1)}<span style="font-size:13px;font-weight:400">억원</span></div>
+        <div style="font-size:13px;font-weight:700;color:#1a1b1e;margin-top:3px">${paid.toLocaleString()}만원 집행</div>
+      </div>
+      <div style="background:#fafbff;border-radius:7px;padding:9px 11px">
+        <div style="font-size:9px;color:#6b7280;font-weight:800;text-transform:uppercase;margin-bottom:3px">잔여(미집행)</div>
+        <div style="font-size:18px;font-weight:800;color:#d97706">${remain.toLocaleString()}<span style="font-size:13px;font-weight:400">만원</span></div>
+        <div style="font-size:11px;color:#6b7280;margin-top:3px">(${(remain/10000).toFixed(2)}억) 잔여</div>
+      </div>
+    </div>
+    <table class="ptbl">
+      <thead><tr><th style="text-align:left">공정 (원가 항목)</th><th style="text-align:left">구분</th><th>일정</th><th>상태</th><th>비중</th><th>계획(만원)</th><th>집행(만원)</th></tr></thead>
+      <tbody>${steps.map(c=>{
+        // 공정 상태별 색상 및 라벨
+        const isD = c.stepStatus==='done';
+        const isA = c.stepStatus==='active';
+        const dotC = isD?'#16a34a': isA?'#2563eb':'#d1d5db';
+        let sl,sb,sf;
+        if(isD)       { sl='완료';  sb='#dcfce7'; sf='#14532d'; }
+        else if(isA)  { sl='진행중'; sb='#dbeafe'; sf='#1e3a8a'; }
+        else          { sl='예정';  sb='#f3f4f6'; sf='#6b7280'; }
+        // 집행금액 색상
+        const paidColor = isD?'#16a34a': isA?'#2563eb':'#9ca3af';
+        const paidWeight = isD||isA?800:400;
+        const paidNote = isA?' (진행중 50%)':'';
+        return `<tr>
+          <td><div style="display:flex;align-items:flex-start;gap:0">
+            <span class="pdot" style="background:${dotC};margin-top:3px"></span>
+            <div><div style="font-weight:700">${c.label}</div>
+              <div style="font-size:9px;color:#9a9ba6">${c.sub}</div></div>
+          </div></td>
+          <td><span style="font-size:10px;padding:2px 7px;background:#f3f4f6;border-radius:4px;font-weight:700;color:#5a5c66">${c.key==='material'?'재료':c.key==='fat'?'완료':'공정'}</span></td>
+          <td style="font-size:11px;color:#6b7280">${c.dv}</td>
+          <td><span style="display:inline-block;font-size:10px;padding:2px 9px;border-radius:12px;font-weight:700;background:${sb};color:${sf}">${sl}</span></td>
+          <td><div style="display:flex;align-items:center;gap:5px">
+            <div class="prog-wrap" style="height:5px"><div class="prog-fill" style="width:${c.pct}%;background:${c.color}"></div></div>
+            <span style="font-size:10px;color:#6b7280;min-width:34px;text-align:right">${c.pct}%</span>
+          </div></td>
+          <td style="font-weight:700;font-size:13px">${c.costAmt.toLocaleString()}</td>
+          <td style="font-weight:${paidWeight};color:${paidColor};font-size:13px">${c.paid>0?c.paid.toLocaleString()+'<span style=\"font-size:9px;font-weight:400;color:#9ca3af\">'+paidNote+'</span>':'<span style=\"color:#d1d5db\">0</span>'}</td>
+        </tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr class="tot"><td colspan="4" style="text-align:left">합계</td><td>100%</td><td style="font-size:13px">${total.toLocaleString()}</td><td style="font-size:13px;font-weight:800;color:${paid>0?'#16a34a':'#9ca3af'}">${paid.toLocaleString()}</td></tr></tfoot>
+    </table>
+    <div style="font-size:9px;color:#a8a7a0;line-height:1.6;border-top:1px solid #f0efe8;padding-top:7px">
+      ※ 계약금액 추정: 10MW=7,500만원 기준, MW당 700만원 가감 | 원가 구성: 재료 51.1% · 제작 27.7% · 후처리·검사 9.4% · 조립 9.0% · FAT·관리·이윤 2.9%
+    </div>`;
+}
+function renderCostCharts(){
+  const d=costData();
+  const tots=COST.map(c=>({l:c.label,v:d.reduce((s,r)=>s+Math.round(cAmt(r.mw)*c.pct/100),0),c:c.color}));
+  if(charts.cpie)charts.cpie.destroy();
+  charts.cpie=new Chart(document.getElementById('cCostPie'),{type:'doughnut',
+    data:{labels:tots.map(t=>t.l),datasets:[{data:tots.map(t=>t.v),backgroundColor:tots.map(t=>t.c),borderWidth:1,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'50%',
+      plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:9,padding:4}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${(ctx.raw/10000).toFixed(1)}억`}}}}});
+  if(charts.cbar)charts.cbar.destroy();
+  charts.cbar=new Chart(document.getElementById('cCostBar'),{type:'bar',
+    data:{labels:d.map(r=>r.hull.slice(0,10)),datasets:[{data:d.map(r=>cAmt(r.mw)),
+      backgroundColor:d.map(r=>{const st=getStatus(r);return SC[st]+'88';}),
+      borderColor:d.map(r=>SC[getStatus(r)]),borderWidth:1,borderRadius:3,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>`${(ctx.raw/10000).toFixed(1)}억원`}}},
+      scales:{x:{grid:{color:GC},ticks:{font:{size:11},maxRotation:40,autoSkip:false}},
+        y:{grid:{color:GC},ticks:{callback:v=>(v/10000).toFixed(0)+'억'}}},
+      onClick:(e,els)=>{if(els.length){sw(3);setTimeout(()=>selProj(d[els[0].index].no),60);}}}});
+}
+
+/* ══ TAB 4: 리드타임 & M/H ══ */
+function renderLT(){
+  const active=DB.filter(r=>['prog','fab','plan'].includes(getStatus(r))&&r.delivery);
+  // D-day chart
+  const ddData=active.slice(0,12).map(r=>({hull:r.hull.slice(0,10),d:dday(r.delivery)||0,st:getStatus(r)}));
+  if(charts.dday)charts.dday.destroy();
+  charts.dday=new Chart(document.getElementById('cDday'),{type:'bar',
+    data:{labels:ddData.map(d=>d.hull),datasets:[{
+      label:'D-day',data:ddData.map(d=>d.d),
+      backgroundColor:ddData.map(d=>d.d<0?'rgba(226,75,74,.7)':d.d<=7?'rgba(133,79,11,.7)':'rgba(59,109,17,.5)'),
+      borderRadius:3,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;return v<0?`D+${Math.abs(v)} (지연)`:v===0?'D-Day':`D-${v}`;  }}}},
+      scales:{x:{grid:{color:GC},title:{display:true,text:'잔여일',font:{size:11}},
+        ticks:{callback:v=>v<0?`D+${Math.abs(v)}`:v===0?'D-Day':`D-${v}`}},
+        y:{grid:{color:GC},ticks:{font:{size:11}}}}}});
+
+  // Leadtime chart
+  const ltData=DB.filter(r=>r.delivery&&(r.cutting||r.di_start)).map(r=>{
+    const start=r.cutting||r.di_start;
+    const sd=p2d('2026-'+start),ed=p2d(r.delivery);
+    const lt=sd&&ed?Math.round((ed-sd)/864e5):null;
+    return{hull:r.hull.slice(0,10),lt,mw:r.mw};
+  }).filter(r=>r.lt!==null).slice(0,14);
+  if(charts.lt)charts.lt.destroy();
+  charts.lt=new Chart(document.getElementById('cLT'),{type:'bar',
+    data:{labels:ltData.map(d=>d.hull),datasets:[{
+      label:'리드타임(일)',data:ltData.map(d=>d.lt),
+      backgroundColor:'rgba(24,95,165,.5)',borderRadius:3,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:GC},title:{display:true,text:'소요일',font:{size:11}}},
+        y:{grid:{color:GC},ticks:{font:{size:11}}}}}});
+
+  // M/H chart
+  const mhData=DB.slice(0,14).map(r=>{
+    const plan=stdMH(r.mw);
+    const ecsp=getECSProg(r);
+    const pg=ecsp!==null?ecsp:(getStatus(r)==='done'?1:0);
+    const actual=Math.round(plan*pg);
+    return{hull:r.hull.slice(0,10),plan,actual,mw:r.mw};
+  });
+  if(charts.mh)charts.mh.destroy();
+  charts.mh=new Chart(document.getElementById('cMH'),{type:'bar',
+    data:{labels:mhData.map(d=>d.hull),datasets:[
+      {label:'계획 MH',data:mhData.map(d=>d.plan),backgroundColor:'rgba(181,212,244,.6)',borderRadius:3,borderSkipped:false},
+      {label:'실적 MH',data:mhData.map(d=>d.actual),backgroundColor:'#185fa5',borderRadius:3,borderSkipped:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{font:{size:11},boxWidth:10}}},
+      scales:{x:{grid:{color:GC},ticks:{font:{size:11},maxRotation:40,autoSkip:false}},
+        y:{grid:{color:GC},title:{display:true,text:'M/H',font:{size:11}}}}}});
+
+  // LT table
+  document.getElementById('ltBody').innerHTML=DB.filter(r=>r.delivery).map(r=>{
+    const start=r.cutting||r.di_start||r.welding;
+    const sd=start?p2d('2026-'+start):null;
+    const ed=p2d(r.delivery);
+    const lt=sd&&ed?Math.round((ed-sd)/864e5):'-';
+    const dd_=dday(r.delivery);
+    const dds=ddStr(r.delivery);
+    const ddc=ddClass(r.delivery);
+    const plan=stdMH(r.mw);
+    const ecsp=getECSProg(r);
+    const pg=ecsp!==null?ecsp:(getStatus(r)==='done'?1:0);
+    const actual=Math.round(plan*pg);
+    return `<tr>
+      <td style="font-weight:700;font-size:10px">${r.hull.slice(0,14)}</td>
+      <td style="font-size:9px;color:#6b7280">${r.yard.slice(0,8)}</td>
+      <td style="text-align:center">${r.mw}</td>
+      <td style="font-size:10px;text-align:center">${start||'-'}</td>
+      <td style="font-size:10px;text-align:center">${r.delivery.slice(5)}</td>
+      <td style="text-align:center;font-weight:700">${lt}일</td>
+      <td class="${ddc}" style="text-align:center;font-weight:800">${dds}</td>
+      <td style="text-align:right;color:#6b7280">${plan.toLocaleString()}</td>
+      <td style="text-align:right;color:#185fa5;font-weight:700">${actual.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ══ TAB SWITCH ══ */
+function sw(n){
+  activeTab=n;
+  [1,2,3,4,5,6].forEach(i=>{
+    const v=document.getElementById('v'+i);
+    const t=document.getElementById('t'+i);
+    if(v) v.style.display=i===n?'':'none';
+    if(t) t.classList.toggle('on',i===n);
+  });
+  if(n===2) renderECS();
+  if(n===3){ renderCostList(); renderCostCharts(); }
+  if(n===4) renderLT();
+  if(n===5) runSearch();
+  if(n===6) renderHistory();
+}
+
+/* ══ GANTT FILTER ══ */
+function gf(f,btn){
+  document.querySelectorAll('#v1 .fbtn').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+  const data=f==='all'?DB:
+    f==='late'?DB.filter(r=>{const d=dday(r.delivery);return d!==null&&d<0&&getStatus(r)!=='done';}):
+    f==='done'?DB.filter(r=>getStatus(r)==='done'):
+    f==='active'?DB.filter(r=>getStatus(r)==='active'):
+    f==='before'?DB.filter(r=>getStatus(r)==='before'):DB;
+  currentGanttData=data;
+  renderKPI(); renderGantt(data); renderGCharts(data);
+}
+/* ══ COST FILTER ══ */
+function cf(f,btn){
+  cfil=f; document.querySelectorAll('#v3 .fbtn').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
+  selNo=null;
+  document.getElementById('costDetail').innerHTML=`<div class="cost-ph"><svg width="38" height="38" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.1"/><path d="M8 12h8M8 8h5M8 16h3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg><span>좌측에서 프로젝트 선택</span></div>`;
+  renderCostList(); renderCostCharts();
+}
+
+/* ══ FILE UPLOAD ══ */
+function loadSchedule(input){
+  const file=input.files[0]; if(!file) return;
+  document.getElementById('uploadHint').textContent='생산계획 파싱 중...';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      // raw:true + cellDates:true → 날짜는 Date 객체, 나머지는 원본값
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const shn=wb.SheetNames.find(s=>s.toLowerCase().includes('sox'))||wb.SheetNames[0];
+      const ws=wb.Sheets[shn];
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+
+      // 날짜 헤더 행 탐색: 2026년 Date 객체가 50개 이상인 행
+      // (행1에 2019~2025 날짜 84개가 있어서 전체 개수로 걸러지면 안 됨)
+      let dr=-1, dcm={};
+      for(let r=0;r<10;r++){
+        if(!raw[r]) continue;
+        const dates2026=raw[r].filter(c=>c instanceof Date && c.getFullYear()===2026).length;
+        if(dates2026>=50){dr=r;break;}
+      }
+      if(dr<0){alert('날짜 헤더를 찾을 수 없습니다.\n(행1~10 중 2026년 날짜 50개↑ 없음)\n\n파일이 올바른 생산계획 양식인지 확인해주세요.');return;}
+
+      // 날짜 컬럼 맵 생성 (2026년만)
+      raw[dr].forEach((v,i)=>{
+        if(v instanceof Date && !isNaN(v) && v.getFullYear()===2026){
+          dcm[i]=v.toISOString().slice(0,10); // YYYY-MM-DD
+        }
+      });
+      const c26=Object.entries(dcm).map(([i])=>+i);
+      if(!c26.length){alert('2026년 날짜 컬럼 없음');return;}
+      const minC=Math.min(...c26),maxC=Math.max(...c26);
+
+      // 데이터 파싱
+      const parsed=[];
+      for(let r=dr+1;r<raw.length;r++){
+        const row=raw[r];
+        if(!row||row[0]==null) continue;
+        // 2026년 컬럼에 내용이 있는 행만
+        if(!c26.some(i=>i<row.length&&row[i]!=null&&String(row[i]).trim()!='')) continue;
+
+        const no=row[0];
+        const yard=String(row[1]||'').replace(/\n/g,' ').trim().slice(0,15);
+        const hull=String(row[2]||'').replace(/\n/g,' ').trim().slice(0,20);
+        const mw=parseFloat(row[5])||10;
+        const cls=String(row[7]||'').replace(/\n/g,'/').trim().slice(0,8);
+
+        // 납기일: row[10] (Date 객체 또는 문자열)
+        let delivStr='';
+        if(row[10] instanceof Date) delivStr=row[10].toISOString().slice(0,10);
+        else if(row[10]) delivStr=String(row[10]).slice(0,10);
+
+        let cutting=null,welding=null,di_start=null,acid=null,assembly=null,fat_start=null;
+        for(let c=minC;c<=Math.min(maxC,row.length-1);c++){
+          const v=row[c];
+          if(v==null||v==='') continue;
+          if(!dcm[c]) continue;
+          const sv=String(v).toUpperCase();
+          const dt=dcm[c].slice(5); // MM-DD
+          if(sv.includes('CUTTING')&&!cutting)   cutting=dt;
+          if((sv.includes('FIT')||sv.includes('WELDING'))&&!welding) welding=dt;
+          if((sv.includes('VI/DI')||sv.includes('DI'))&&!di_start)  di_start=dt;
+          if(sv.includes('ACID')&&!acid)         acid=dt;
+          if(String(v).includes('보온')&&!assembly) assembly=dt;
+          if(sv.includes('FAT')&&!fat_start)     fat_start=dt;
+        }
+        parsed.push({no,yard,hull,mw,cls,delivery:delivStr,cutting,welding,di_start,acid,assembly,fat_start});
+      }
+      if(!parsed.length){alert('파싱된 데이터가 없습니다. 파일 구조를 확인해주세요.');return;}
+      // 덮어쓰기 대신 병합
+      mergeScheduleData(file.name, parsed);
+      selNo=null;
+      document.getElementById('uploadHint').textContent=`생산계획: ${file.name} (${parsed.length}건) 병합 완료 → 총 ${DB.length}건`;
+      // Sheets에도 저장 (연동 시)
+      const compM=file.name.match(/\[([^\]]+)\]/)||file.name.match(/^([^_\[]+)/);
+      const comp=compM?compM[1].trim().slice(0,20):file.name.slice(0,15);
+      saveScheduleToSheets(file.name, comp, parsed);
+      init();
+    }catch(err){alert('생산계획 오류: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function loadECS(input){
+  const file=input.files[0]; if(!file) return;
+  document.getElementById('uploadHint').textContent='ECS 파싱 중...';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      // SOx 시트 찾기 (대소문자 무관, 'SOx, NOx' 포함)
+      const shn=wb.SheetNames.find(s=>s.toLowerCase().replace(/[^a-z0-9]/g,'').includes('sox'))
+               ||wb.SheetNames[0];
+      const ws=wb.Sheets[shn];
+      // raw:true → 숫자는 number, 날짜는 Date 객체로
+      const raw=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+
+      // 헤더 행 탐색: NO.(숫자), 호선, 조선소, 제작사, 납기 순서로 있는 행
+      // — '공정률' 텍스트 없으므로 'NO.' 또는 row[0]==='NO.' 패턴으로 탐색
+      // — fallback: row[0]이 문자열 'NO.' 이거나 숫자 1이 처음 나오기 직전 행
+      let hdr=-1;
+      for(let r=0;r<20;r++){
+        if(!raw[r]) continue;
+        const r0=String(raw[r][0]||'').toUpperCase().trim();
+        const r1=String(raw[r][1]||'').trim();
+        // 헤더 행 조건: col0='NO.' 이고 col1='호선' 또는 유사
+        if((r0==='NO.'||r0==='NO')&&(r1.includes('호선')||r1.includes('HULL'))){hdr=r;break;}
+        // fallback: 다음 행이 숫자 1로 시작하면 현재 행이 헤더
+        if(r+1<raw.length&&raw[r+1]&&typeof raw[r+1][0]==='number'&&raw[r+1][0]===1){hdr=r;break;}
+      }
+      // 헤더 못 찾으면 데이터가 시작되는 첫 숫자 행 직전을 헤더로
+      if(hdr<0){
+        for(let r=0;r<25;r++){
+          if(raw[r]&&typeof raw[r][0]==='number'){hdr=r-1;break;}
+        }
+      }
+      if(hdr<0) hdr=7; // 최후 fallback: 8번째 행(index 7)
+
+      const parsed=[];
+      for(let r=hdr+1;r<raw.length;r++){
+        const row=raw[r];
+        if(!row) continue;
+        // NO. 컬럼이 숫자인 행만 데이터로 처리
+        if(typeof row[0]!=='number'||row[0]<=0) continue;
+
+        const hull=String(row[1]||'').trim();
+        const yard=String(row[2]||'').trim();   // '선주 or 조선소'
+        const maker=String(row[3]||'').trim();  // '제작사'
+        if(!hull) continue;
+
+        // 납기일: Date 객체 또는 문자열
+        let delStr='-';
+        if(row[4] instanceof Date) delStr=row[4].toISOString().slice(0,10);
+        else if(row[4]) delStr=String(row[4]).trim();
+
+        // 공정률: col[17] (0~1 또는 0~100)
+        let prog=0;
+        const rawProg=row[17];
+        if(rawProg!=null&&rawProg!==''){
+          prog=parseFloat(rawProg)||0;
+          if(prog>1) prog=prog/100; // 100 단위면 0~1로 변환
+        }
+
+        // DI/검사일: col[12]=DI, col[15]=검사일 (있는 경우)
+        const di=row[12]?String(row[12]).trim():'-';
+        const insp=row[15]?String(row[15]).trim():'-';
+
+        parsed.push({hull,yard,maker,delivery:delStr,di,insp,prog});
+      }
+      if(!parsed.length){alert('ECS 파싱 데이터 없음\n\n시트: '+shn+'\n행'+hdr+'부터 탐색\n\n파일 구조를 확인하거나 문의해주세요.');return;}
+      ECSDB=parsed;
+
+      // ── 주차 이력 자동 저장 ──
+      const weekLabel = extractWeekLabel(file.name);
+      saveHistoryEntry(weekLabel, parsed);
+
+      document.getElementById('uploadHint').textContent=`ECS: ${file.name} (${parsed.length}건) 로드 완료 | 이력 저장: ${weekLabel}`;
+      // Sheets에도 저장 (연동 시)
+      saveECSToSheets(parsed, weekLabel);
+      document.getElementById('ecsWeek').innerHTML=`<span class="wbdg">${weekLabel}</span>`;
+      renderKPI();
+      if(activeTab===2)renderECS();
+      if(activeTab===6)renderHistory();
+    }catch(err){alert('ECS 오류: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ══ SEARCH ══ */
+let selectedSearchNo = null;
+
+function hl(text, kw){
+  if(!kw) return text;
+  const re = new RegExp('('+kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+  return String(text).replace(re,'<span class="highlight">$1</span>');
+}
+
+function runSearch(){
+  const hull  = (document.getElementById('sq-hull').value||'').trim().toLowerCase();
+  const yard  = (document.getElementById('sq-yard').value||'').trim().toLowerCase();
+  const dFrom = document.getElementById('sq-del-from').value;
+  const dTo   = document.getElementById('sq-del-to').value;
+  const sFrom = document.getElementById('sq-start-from').value;
+  const stVal = document.getElementById('sq-status').value;
+  const mwMin = parseFloat(document.getElementById('sq-mw-min').value)||0;
+  const mwMax = parseFloat(document.getElementById('sq-mw-max').value)||999;
+
+  // Build active tag list
+  const tags=[];
+  if(hull)  tags.push({label:`호선: ${hull}`,    clear:()=>{document.getElementById('sq-hull').value='';runSearch();}});
+  if(yard)  tags.push({label:`조선소: ${yard}`,  clear:()=>{document.getElementById('sq-yard').value='';runSearch();}});
+  if(dFrom) tags.push({label:`납기 ≥ ${dFrom}`,  clear:()=>{document.getElementById('sq-del-from').value='';runSearch();}});
+  if(dTo)   tags.push({label:`납기 ≤ ${dTo}`,    clear:()=>{document.getElementById('sq-del-to').value='';runSearch();}});
+  if(sFrom) tags.push({label:`착수 ≥ ${sFrom}`,  clear:()=>{document.getElementById('sq-start-from').value='';runSearch();}});
+  if(stVal) tags.push({label:`상태: ${SL[stVal]||stVal}`, clear:()=>{document.getElementById('sq-status').value='';runSearch();}});
+  if(document.getElementById('sq-mw-min').value||document.getElementById('sq-mw-max').value)
+    tags.push({label:`MW: ${mwMin||0}~${document.getElementById('sq-mw-max').value||'∞'}`, clear:()=>{document.getElementById('sq-mw-min').value='';document.getElementById('sq-mw-max').value='';runSearch();}});
+
+  const tagEl=document.getElementById('searchTags');
+  if(tags.length===0){
+    tagEl.innerHTML='<span style="font-size:10px;color:#a8a7a0">검색 조건을 입력하면 즉시 결과가 표시됩니다</span>';
+  } else {
+    tagEl.innerHTML=tags.map((t,i)=>`<span class="search-tag">${t.label}<button onclick="searchTagClear(${i})">×</button></span>`).join('')+
+      `<span class="result-count" id="resultCount"></span>`;
+    window._searchTagClears=tags.map(t=>t.clear);
+  }
+
+  // Filter
+  const results = DB.filter(r=>{
+    if(hull && !r.hull.toLowerCase().includes(hull) && !r.yard.toLowerCase().includes(hull)) return false;
+    if(yard && !r.yard.toLowerCase().includes(yard)) return false;
+    if(dFrom && r.delivery && r.delivery < dFrom) return false;
+    if(dTo   && r.delivery && r.delivery > dTo)   return false;
+    if(sFrom){
+      const start=r.cutting||r.di_start||r.welding;
+      if(!start||('2026-'+start)<sFrom) return false;
+    }
+    if(stVal && getStatus(r)!==stVal) return false;
+    if(r.mw < mwMin || r.mw > mwMax) return false;
+    return true;
+  });
+
+  if(document.getElementById('resultCount'))
+    document.getElementById('resultCount').textContent=`검색 결과 ${results.length}건`;
+
+  renderSearchResults(results, hull||yard);
+}
+
+function searchTagClear(i){
+  if(window._searchTagClears&&window._searchTagClears[i]) window._searchTagClears[i]();
+}
+
+function resetSearch(){
+  ['sq-hull','sq-yard','sq-del-from','sq-del-to','sq-start-from','sq-mw-min','sq-mw-max'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  document.getElementById('sq-status').value='';
+  selectedSearchNo=null;
+  document.getElementById('searchDetail').style.display='none';
+  runSearch();
+}
+
+function renderSearchResults(results, kw){
+  const body=document.getElementById('searchResultBody');
+  if(results.length===0){
+    body.innerHTML=`<div class="no-result">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      <span>검색 결과가 없습니다</span></div>`;
+    return;
+  }
+  body.innerHTML=results.map(r=>{
+    const st=getStatus(r),sc=SC[st],amt=cAmt(r.mw);
+    const ecsp=getECSProg(r);
+    const pg=ecsp!==null?Math.round(ecsp*100):(st==='done'?100:0);
+    const dds=ddStr(r.delivery),ddc=ddClass(r.delivery);
+    // process step indicators (mini)
+    const steps=[
+      {k:'cutting',  l:'절단', v:r.cutting},
+      {k:'welding',  l:'용접', v:r.welding},
+      {k:'di_start', l:'DI',   v:r.di_start},
+      {k:'acid',     l:'산처리',v:r.acid},
+      {k:'assembly', l:'조립', v:r.assembly},
+      {k:'fat_start',l:'FAT',  v:r.fat_start},
+    ];
+    const stepsHtml=`<div style="display:flex;gap:3px;align-items:center;padding:3px 4px">
+      ${steps.map(s=>{
+        const done=st==='done'||(s.v&&p2d('2026-'+s.v)<=TODAY);
+        const active=!done&&s.v&&p2d('2026-'+s.v)>TODAY;
+        const dotCls=done?'done':active?'active':'';
+        return `<div style="text-align:center">
+          <div style="width:18px;height:18px;border-radius:50%;margin:0 auto 2px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;border:1.5px solid ${done?'#3b6d11':active?'#185fa5':'#e8e6de'};background:${done?'#3b6d11':active?'#185fa5':'#fff'};color:${done||active?'#fff':'#b4b2a9'}">${s.l.slice(0,2)}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+    const hullHl=hl(r.hull,kw);
+    const yardHl=hl(r.yard.slice(0,12),kw);
+    const sel=selectedSearchNo===r.no?' style="background:#eff6ff"':'';
+    return `<div class="sr-row"${sel} onclick="showSearchDetail(${r.no})">
+      <div class="src dim">${r.no}</div>
+      <div class="src" style="font-weight:700;font-size:12px;font-weight:700">${hullHl}</div>
+      <div class="src dim" style="font-size:11px">${yardHl}</div>
+      <div class="src" style="text-align:center;font-weight:800;font-size:14px;color:${sc}">${r.mw}</div>
+      <div class="src dim" style="text-align:center;font-size:9px">${r.cls}</div>
+      <div class="src" style="text-align:center"><span class="bdg b-${st==='done'?'done2':st}">${SL[st]}</span></div>
+      <div class="src" style="padding:4px 5px">
+        <div style="display:flex;align-items:center;gap:3px">
+          <div class="prog-wrap"><div class="prog-fill" style="width:${pg}%;background:${sc}"></div></div>
+          <span style="font-size:12px;color:${sc};font-weight:800;min-width:28px">${pg}%</span>
+        </div>
+      </div>
+      <div class="src" style="text-align:center;font-size:12px">${r.delivery?r.delivery.slice(5):'-'}</div>
+      <div class="src ${ddc}" style="text-align:center;font-weight:800;font-size:12px">${dds}</div>
+      <div class="src" style="text-align:right;font-size:12px;font-weight:700;color:#185fa5">${(amt/10000).toFixed(1)}억</div>
+      <div class="src" style="padding:2px 4px">${stepsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function showSearchDetail(no){
+  selectedSearchNo=no;
+  // re-render to highlight selected row
+  const hull=(document.getElementById('sq-hull').value||'').trim().toLowerCase();
+  const yard=(document.getElementById('sq-yard').value||'').trim().toLowerCase();
+  runSearch();
+
+  const r=DB.find(d=>d.no===no); if(!r) return;
+  const st=getStatus(r),sc=SC[st],amt=cAmt(r.mw);
+  const ecsp=getECSProg(r);
+  const pg=ecsp!==null?Math.round(ecsp*100):(st==='done'?100:0);
+  const ecsRow=ECSDB.find(e=>e.hull===r.hull);
+
+  // process timeline
+  const procSteps=[
+    {label:'절단',     sub:'Cutting',   key:'cutting',   date:r.cutting},
+    {label:'취부/용접', sub:'Welding',   key:'welding',   date:r.welding},
+    {label:'VI/DI',   sub:'검사',       key:'di_start',  date:r.di_start},
+    {label:'산처리',   sub:'Acid Pick', key:'acid',      date:r.acid},
+    {label:'보온/조립', sub:'Assembly',  key:'assembly',  date:r.assembly},
+    {label:'FAT',     sub:'검사/납기',  key:'fat_start', date:r.fat_start},
+  ];
+  const tlHtml=procSteps.map(s=>{
+    const done=st==='done'||(s.date&&p2d('2026-'+s.date)<=TODAY);
+    const ahead=!done&&s.date&&p2d('2026-'+s.date)>TODAY;
+    const cls=done?'done':ahead?'active':'';
+    return `<div class="pt-step">
+      <div class="pt-dot ${cls}">${s.label.slice(0,2)}</div>
+      <div class="pt-label">${s.label}</div>
+      <div class="pt-date">${s.date||'-'}</div>
+    </div>`;
+  }).join('');
+
+  const start=r.cutting||r.di_start||r.welding;
+  const sd=start?p2d('2026-'+start):null;
+  const ed=p2d(r.delivery);
+  const lt=sd&&ed?Math.round((ed-sd)/864e5):'-';
+  const planMH=stdMH(r.mw);
+  const actMH=Math.round(planMH*(pg/100));
+  const paid=Math.round(amt*(pg/100));
+
+  document.getElementById('searchDetailInner').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+      <div>
+        <div style="font-size:16px;font-weight:800;color:var(--text1)">No.${r.no} · ${r.hull}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:3px">${r.yard} | ${r.mw}MW | 선급: ${r.cls} | 납기: ${r.delivery||'-'}</div>
+      </div>
+      <span class="bdg b-${st==='done'?'done2':st}" style="font-size:12px;padding:4px 12px">${SL[st]}</span>
+    </div>
+    <div class="detail-grid">
+      <div class="det-item"><div class="dl">공정률</div><div class="dv" style="font-size:20px;color:${sc}">${pg}%</div><div style="height:4px;background:#f0efe8;border-radius:2px;margin-top:5px;overflow:hidden"><div style="height:100%;width:${pg}%;background:${sc};border-radius:2px"></div></div></div>
+      <div class="det-item"><div class="dl">리드타임</div><div class="dv" style="font-size:18px;color:#2563eb">${lt}<span style="font-size:11px;font-weight:400">일</span></div><div style="font-size:9px;color:#6b7280;margin-top:2px">${start||'-'} → ${r.delivery?r.delivery.slice(5):'-'}</div></div>
+      <div class="det-item"><div class="dl">D-day</div><div class="dv" style="font-size:18px" class_extra="${ddClass(r.delivery)}">${ddStr(r.delivery)}</div><div style="font-size:9px;color:#6b7280;margin-top:2px">납기 ${r.delivery||'-'}</div></div>
+      <div class="det-item"><div class="dl">계약금액(추정)</div><div class="dv" style="color:#185fa5">${(amt/10000).toFixed(1)}<span style="font-size:11px;font-weight:400">억</span></div><div style="font-size:9px;color:#6b7280;margin-top:2px">집행 ${(paid/10000).toFixed(1)}억 / 잔 ${((amt-paid)/10000).toFixed(1)}억</div></div>
+      <div class="det-item"><div class="dl">계획 M/H</div><div class="dv" style="color:#534ab7">${planMH.toLocaleString()}<span style="font-size:11px;font-weight:400">MH</span></div><div style="font-size:9px;color:#6b7280;margin-top:2px">${r.mw}MW 기준</div></div>
+      <div class="det-item"><div class="dl">실적 M/H (추정)</div><div class="dv" style="color:#0f6e56">${actMH.toLocaleString()}<span style="font-size:11px;font-weight:400">MH</span></div><div style="font-size:9px;color:#6b7280;margin-top:2px">공정률 ${pg}% 기반</div></div>
+      ${ecsRow?`<div class="det-item"><div class="dl">ECS DI일</div><div class="dv" style="color:#854f0b;font-size:13px">${ecsRow.di}</div></div>
+      <div class="det-item"><div class="dl">ECS 검사일</div><div class="dv" style="color:#854f0b;font-size:13px">${ecsRow.insp}</div></div>`
+      :`<div class="det-item" style="grid-column:span 2"><div class="dl">ECS 데이터</div><div style="font-size:10px;color:#a8a7a0;margin-top:4px">ECS 파일 미업로드 또는 미매칭</div></div>`}
+    </div>
+    <div style="font-size:10px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">공정 진행 단계</div>
+    <div class="process-timeline">${tlHtml}</div>
+    <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="search-btn primary" onclick="sw(3);setTimeout(()=>selProj(${r.no}),60)" style="font-size:10px;height:28px;padding:0 12px">원가 상세 보기 →</button>
+      <button class="search-btn reset" onclick="document.getElementById('searchDetail').style.display='none';selectedSearchNo=null;runSearch()" style="font-size:10px;height:28px;padding:0 12px">닫기</button>
+    </div>`;
+  document.getElementById('searchDetail').style.display='';
+  document.getElementById('searchDetail').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* ══ INIT ══ */
+
+/* ══════════════════════════════════════════════════════
+   주차별 이력 관리 (localStorage 기반)
+   저장 구조: scrubber_history = [
+     { week:'2026-W11', label:'3월 2주차', date:'2026-03-13', data:[{hull,yard,maker,prog,...}] },
+     ...
+   ]
+══════════════════════════════════════════════════════ */
+const HIST_KEY = 'scrubber_sox_history_v1';
+
+function loadHistoryAll(){
+  try{ return JSON.parse(localStorage.getItem(HIST_KEY)||'[]'); }
+  catch(e){ return []; }
+}
+function saveHistoryAll(arr){
+  try{ localStorage.setItem(HIST_KEY, JSON.stringify(arr)); } catch(e){ alert('저장 실패: '+e.message); }
+}
+
+// 파일명에서 주차 라벨 추출
+function extractWeekLabel(filename){
+  // 패턴: 20260313, 20260320 등 날짜 8자리 추출
+  const m=filename.match(/(\d{8})/);
+  if(m){
+    const s=m[1];
+    const y=s.slice(0,4),mo=parseInt(s.slice(4,6)),d=parseInt(s.slice(6,8));
+    const dt=new Date(y,mo-1,d);
+    // ISO 주차 계산
+    const startOfYear=new Date(dt.getFullYear(),0,1);
+    const week=Math.ceil(((dt-startOfYear)/864e5+startOfYear.getDay()+1)/7);
+    return `${y}년 ${mo}월 ${Math.ceil(d/7)}주차`;
+  }
+  // 날짜 없으면 오늘 기준
+  const now=new Date();
+  return `${now.getFullYear()}년 ${now.getMonth()+1}월 ${Math.ceil(now.getDate()/7)}주차`;
+}
+
+// 주차 이력 저장 (같은 주차면 덮어씀, 다른 주차면 추가)
+function saveHistoryEntry(label, ecsData){
+  const history=loadHistoryAll();
+  const now=new Date().toISOString().slice(0,10);
+  const idx=history.findIndex(h=>h.label===label);
+  const entry={
+    label,
+    date: now,
+    data: ecsData.map(r=>({hull:r.hull,yard:r.yard,maker:r.maker,prog:r.prog,delivery:r.delivery}))
+  };
+  if(idx>=0){ history[idx]=entry; }
+  else { history.push(entry); }
+  // 최신순 정렬
+  history.sort((a,b)=>b.date.localeCompare(a.date));
+  saveHistoryAll(history);
+  updateHistoryCount();
+}
+
+function clearHistory(){
+  if(!confirm('모든 주차 이력을 삭제하시겠습니까?')) return;
+  localStorage.removeItem(HIST_KEY);
+  updateHistoryCount();
+  renderHistory();
+}
+
+function updateHistoryCount(){
+  const h=loadHistoryAll();
+  const el=document.getElementById('historyCount');
+  if(el) el.textContent=`저장된 주차: ${h.length}건`;
+}
+
+/* ── 이력 탭 렌더링 ── */
+let histHullSel=[];
+let cHistLine_=null, cHistAvg_=null;
+
+function renderHistory(){
+  const history=loadHistoryAll();
+  updateHistoryCount();
+
+  if(history.length===0){
+    document.getElementById('histTableBody').innerHTML=
+      '<tr><td colspan="99" style="text-align:center;padding:40px;color:#9ca3af;font-size:13px">저장된 이력이 없습니다.<br>ECS 공정현황 파일을 업로드하면 자동으로 이력이 쌓입니다.</td></tr>';
+    document.getElementById('histTableHead').innerHTML='';
+    document.getElementById('histHullFilter').innerHTML='';
+    return;
+  }
+
+  // 모든 호선 목록 (전체 이력에서 수집)
+  const allHulls=[...new Set(history.flatMap(h=>h.data.map(d=>d.hull)))].sort();
+  if(histHullSel.length===0) histHullSel=allHulls.slice(0,5); // 기본 5개
+
+  // ── 호선 선택 버튼 ──
+  document.getElementById('histHullFilter').innerHTML=
+    '<span style="font-size:11px;font-weight:700;color:#6b7280;margin-right:4px;line-height:28px">호선 선택:</span>'+
+    allHulls.map(h=>{
+      const sel=histHullSel.includes(h);
+      return `<button onclick="toggleHistHull('${h}')" style="height:28px;padding:0 10px;border-radius:14px;border:1px solid ${sel?'#2563eb':'#e5e7eb'};background:${sel?'#dbeafe':'#fff'};color:${sel?'#1e3a8a':'#6b7280'};font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">${h}</button>`;
+    }).join('');
+
+  // ── 추이 선 차트 (선택 호선별) ──
+  const weeks=history.map(h=>h.label).reverse();
+  const COLORS=['#3b82f6','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#db2777','#65a30d'];
+  const lineDatasets=histHullSel.map((hull,i)=>{
+    const vals=weeks.map(w=>{
+      const entry=history.slice().reverse().find(h=>h.label===w);
+      const row=entry?entry.data.find(d=>d.hull===hull):null;
+      return row?Math.round(row.prog*100):null;
+    });
+    return{
+      label:hull,
+      data:vals,
+      borderColor:COLORS[i%COLORS.length],
+      backgroundColor:COLORS[i%COLORS.length]+'22',
+      tension:.3,
+      pointRadius:5,
+      pointHoverRadius:7,
+      fill:false,
+      spanGaps:true,
+    };
+  });
+
+  if(cHistLine_) cHistLine_.destroy();
+  cHistLine_=new Chart(document.getElementById('cHistLine'),{
+    type:'line',
+    data:{labels:weeks,datasets:lineDatasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:11},boxWidth:12,padding:10}}},
+      scales:{
+        x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:11}}},
+        y:{grid:{color:'rgba(0,0,0,.04)'},min:0,max:100,
+          ticks:{callback:v=>v+'%',font:{size:11}}}
+      }
+    }
+  });
+
+  // ── 전체 평균 공정률 차트 ──
+  const avgData=history.slice().reverse().map(h=>{
+    const progs=h.data.map(d=>d.prog);
+    return progs.length?Math.round(progs.reduce((a,b)=>a+b,0)/progs.length*100):0;
+  });
+  if(cHistAvg_) cHistAvg_.destroy();
+  cHistAvg_=new Chart(document.getElementById('cHistAvg'),{
+    type:'bar',
+    data:{labels:weeks,datasets:[{
+      label:'평균 공정률',
+      data:avgData,
+      backgroundColor:avgData.map(v=>v>=80?'#16a34a':v>=50?'#3b82f6':v>=30?'#d97706':'#f97316'),
+      borderRadius:5,borderSkipped:false,
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.raw+'%'}}},
+      scales:{
+        x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:11}}},
+        y:{grid:{color:'rgba(0,0,0,.04)'},min:0,max:100,
+          ticks:{callback:v=>v+'%',font:{size:11}}}
+      }
+    }
+  });
+
+  // ── 이력 테이블 ──
+  // 헤더: 주차 컬럼
+  const weekCols=history.map(h=>h.label);
+  const stickyTh = 'position:sticky;top:0;z-index:10;background:#f9fafb;';
+  document.getElementById('histTableHead').innerHTML=`<tr>
+    <th style="${stickyTh}text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-size:11px;font-weight:800;color:#374151;white-space:nowrap;min-width:100px">호선</th>
+    <th style="${stickyTh}text-align:left;padding:10px 14px;border-bottom:2px solid #e5e7eb;font-size:11px;font-weight:800;color:#374151;min-width:90px">조선소</th>
+    <th style="${stickyTh}padding:10px 14px;border-bottom:2px solid #e5e7eb;font-size:11px;font-weight:800;color:#374151;text-align:center;min-width:60px">납기</th>
+    ${weekCols.map(w=>`<th style="${stickyTh}padding:10px 14px;border-bottom:2px solid #e5e7eb;font-size:11px;font-weight:800;color:#374151;text-align:center;white-space:nowrap;min-width:90px">${w}</th>`).join('')}
+    <th style="${stickyTh}padding:10px 14px;border-bottom:2px solid #e5e7eb;font-size:11px;font-weight:800;color:#374151;text-align:center;min-width:60px">변화</th>
+  </tr>`;
+
+  // 바디: 호선별 행
+  document.getElementById('histTableBody').innerHTML=allHulls.map(hull=>{
+    const schedRow=DB.find(r=>r.hull===hull);
+    const yard=schedRow?schedRow.yard:(history[0].data.find(d=>d.hull===hull)||{}).yard||'-';
+    const delivery=schedRow?schedRow.delivery:'-';
+
+    const progByWeek=weekCols.map(w=>{
+      const entry=history.find(h=>h.label===w);
+      const row=entry?entry.data.find(d=>d.hull===hull):null;
+      return row!=null?Math.round(row.prog*100):null;
+    });
+
+    // 변화량 (최신 - 이전 주차, 있는 경우)
+    const validProgs=progByWeek.filter(v=>v!=null);
+    const change=validProgs.length>=2?validProgs[0]-validProgs[validProgs.length-1]:null;
+    const changeTxt=change!=null?`${change>0?'+':''}${change}%`:'-';
+    const changeColor=change==null?'#9ca3af':change>0?'#16a34a':change<0?'#dc2626':'#6b7280';
+
+    const weekCells=progByWeek.map((v,i)=>{
+      if(v==null) return `<td style="padding:9px 14px;border-bottom:1px solid #f0f1f4;text-align:center;color:#d1d5db;font-size:12px">-</td>`;
+      // 이전 주차와 비교 (이전 = 오른쪽 컬럼, 최신 = 왼쪽)
+      const prev=progByWeek[i+1];
+      const diff=prev!=null?v-prev:null;
+      const diffTxt=diff!=null&&diff!==0?`<span style="font-size:10px;color:${diff>0?'#16a34a':'#dc2626'};font-weight:700;margin-left:3px">${diff>0?'▲':'▼'}${Math.abs(diff)}</span>`:'';
+      const bgColor=v>=80?'#dcfce7':v>=50?'#dbeafe':v>=30?'#fef3c7':'#f3f4f6';
+      const fgColor=v>=80?'#14532d':v>=50?'#1e3a8a':v>=30?'#78350f':'#374151';
+      return `<td style="padding:9px 14px;border-bottom:1px solid #f0f1f4;text-align:center">
+        <span style="background:${bgColor};color:${fgColor};font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px">${v}%</span>${diffTxt}
+      </td>`;
+    }).join('');
+
+    return `<tr style="transition:background .1s" onmouseover="this.style.background='#fafbff'" onmouseout="this.style.background=''">
+      <td style="padding:9px 14px;border-bottom:1px solid #f0f1f4;font-weight:700;font-size:13px">${hull}</td>
+      <td style="padding:9px 14px;border-bottom:1px solid #f0f1f4;font-size:12px;color:#6b7280">${yard}</td>
+      <td style="padding:9px 14px;border-bottom:1px solid #f0f1f4;font-size:12px;text-align:center;color:#6b7280">${delivery?delivery.slice(5):'-'}</td>
+      ${weekCells}
+      <td style="padding:9px 14px;border-bottom:1px solid #f0f1f4;text-align:center;font-weight:800;font-size:12px;color:${changeColor}">${changeTxt}</td>
+    </tr>`;
+  }).join('');
+}
+
+function toggleHistHull(hull){
+  if(histHullSel.includes(hull)) histHullSel=histHullSel.filter(h=>h!==hull);
+  else histHullSel.push(hull);
+  renderHistory();
+}
+
+// 이력 Excel 다운로드
+function exportHistory(){
+  const history=loadHistoryAll();
+  if(!history.length){alert('저장된 이력이 없습니다.');return;}
+  const allHulls=[...new Set(history.flatMap(h=>h.data.map(d=>d.hull)))].sort();
+  const weeks=history.map(h=>h.label);
+  // CSV 생성
+  const header=['호선','조선소','납기',...weeks,'변화(최신-초기)'];
+  const rows=allHulls.map(hull=>{
+    const schedRow=DB.find(r=>r.hull===hull);
+    const yard=schedRow?schedRow.yard:'-';
+    const delivery=schedRow?schedRow.delivery:'-';
+    const progs=weeks.map(w=>{
+      const entry=history.find(h=>h.label===w);
+      const row=entry?entry.data.find(d=>d.hull===hull):null;
+      return row!=null?Math.round(row.prog*100)+'%':'';
+    });
+    const validP=progs.filter(v=>v!=='').map(v=>parseInt(v));
+    const change=validP.length>=2?validP[0]-validP[validP.length-1]:'-';
+    return [hull,yard,delivery,...progs,change!=='-'?(change>0?'+':'')+change+'%':'-'];
+  });
+  const csvContent=[header,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob=new Blob(['\uFEFF'+csvContent],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`SOx_공정률이력_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+
+
+/* ══ 생산계획 소스 localStorage 영속화 ══ */
+const SCHED_KEY = 'scrubber_schedule_sources_v1';
+
+function saveSourcesToDB(){
+  try{
+    // data 배열 포함 전체 저장 (용량 주의: 5MB 한도)
+    localStorage.setItem(SCHED_KEY, JSON.stringify(DB_SOURCES));
+  } catch(e){
+    console.warn('생산계획 저장 실패 (용량 초과일 수 있음):', e.message);
+  }
+}
+
+function loadSourcesFromDB(){
+  try{
+    const raw = localStorage.getItem(SCHED_KEY);
+    if(!raw) return;
+    const saved = JSON.parse(raw);
+    if(!Array.isArray(saved)||saved.length===0) return;
+    DB_SOURCES = saved;
+    rebuildDB();
+    renderSrcPanel();
+    const el = document.getElementById('uploadHint');
+    if(el) el.textContent = `저장된 파일 ${DB_SOURCES.length}개 복원 → 총 ${DB.length}건`;
+  } catch(e){
+    console.warn('생산계획 복원 실패:', e.message);
+  }
+}
+
+/* ══ 생산계획 파일 소스 관리 (누적 병합) ══ */
+// DB_SOURCES: [{filename, company, count, data:[...]}]
+let DB_SOURCES = [];
+
+// 소스 추가/병합
+function mergeScheduleData(filename, newRows){
+  // 파일명에서 업체명 추출 (대괄호 또는 언더바 기준)
+  const compMatch = filename.match(/\[([^\]]+)\]/) || filename.match(/^([^_\[]+)/);
+  const company = compMatch ? compMatch[1].trim().slice(0,20) : filename.slice(0,15);
+
+  // 기존 동일 파일명이 있으면 교체, 없으면 추가
+  const existIdx = DB_SOURCES.findIndex(s => s.filename === filename);
+  if(existIdx >= 0){
+    DB_SOURCES[existIdx] = {filename, company, count:newRows.length, data:newRows};
+  } else {
+    DB_SOURCES.push({filename, company, count:newRows.length, data:newRows});
+  }
+
+  // 전체 DB 재구성 — Hull No. 기준 중복 제거 (나중 파일이 우선)
+  rebuildDB();
+  renderSrcPanel();
+  saveSourcesToDB();
+}
+
+function rebuildDB(){
+  const merged = new Map();
+  // 오래된 파일 순서대로 넣고, 나중 파일이 덮어씀
+  DB_SOURCES.forEach(src => {
+    src.data.forEach(r => {
+      merged.set(r.hull + '|' + r.delivery, r);
+    });
+  });
+  DB = Array.from(merged.values());
+  // No. 재정렬 (납기일 오름차순)
+  DB.sort((a,b) => (a.delivery||'').localeCompare(b.delivery||''));
+  DB.forEach((r,i) => r._idx = i+1);
+}
+
+function removeSource(filename){
+  DB_SOURCES = DB_SOURCES.filter(s => s.filename !== filename);
+  if(DB_SOURCES.length === 0){
+    // 모두 지우면 내장 데이터로 복구
+    DB = [...SCHEDULE_DATA];
+  } else {
+    rebuildDB();
+  }
+  renderSrcPanel();
+  saveSourcesToDB();
+  selNo = null;
+  init();
+}
+
+function clearAllSources(){
+  if(!confirm('모든 업로드 파일을 제거하고 내장 데이터(23건)로 초기화하시겠습니까?')) return;
+  DB_SOURCES = [];
+  DB = [...SCHEDULE_DATA];
+  localStorage.removeItem('scrubber_schedule_sources_v1');
+  clearSheetsData(); // Sheets도 초기화
+  renderSrcPanel();
+  selNo = null;
+  init();
+}
+
+function renderSrcPanel(){
+  const panel = document.getElementById('srcPanel');
+  const list  = document.getElementById('srcList');
+  const info  = document.getElementById('srcMergeInfo');
+  if(!panel) return;
+  if(DB_SOURCES.length === 0){
+    panel.classList.remove('show');
+    return;
+  }
+  panel.classList.add('show');
+  list.innerHTML = DB_SOURCES.map(s =>
+    `<span class="src-tag">
+      <span class="src-name" title="${s.filename}">[${s.company}] ${s.filename.slice(0,25)}</span>
+      <span class="src-cnt">${s.count}건</span>
+      <button onclick="removeSource('${s.filename.replace(/'/g,"\\'")}')" title="이 파일 제거">×</button>
+    </span>`
+  ).join('');
+  const total = DB.length;
+  const files = DB_SOURCES.length;
+  info.textContent = `총 ${files}개 파일 병합 → ${total}건 (Hull No. 기준 중복 제거됨)`;
+}
+
+
+/* ══════════════════════════════════════════════════════
+   Google Sheets 연동
+   APPS_SCRIPT_URL: 설정 후 localStorage에 저장
+══════════════════════════════════════════════════════ */
+const SHEETS_URL_KEY = 'scrubber_sheets_url';
+let APPS_SCRIPT_URL = localStorage.getItem(SHEETS_URL_KEY) || 'https://script.google.com/macros/s/AKfycbzRWW9vrKfYupIQ4QKNle7JTkQPOeR0qFPcTAp8SMXTy5S6ysJ3UgV7Fz3OjIlBkWaL/exec';
+let sheetsEnabled = true;
+if(!localStorage.getItem(SHEETS_URL_KEY)) localStorage.setItem(SHEETS_URL_KEY, 'https://script.google.com/macros/s/AKfycbzRWW9vrKfYupIQ4QKNle7JTkQPOeR0qFPcTAp8SMXTy5S6ysJ3UgV7Fz3OjIlBkWaL/exec');
+
+// ── 모달 열기/닫기 ──
+function openSheetsModal(){
+  document.getElementById('sheetsModalBg').style.display='flex';
+  document.getElementById('sheetsUrlInput').value = APPS_SCRIPT_URL;
+  document.getElementById('sheetsTestResult').textContent='';
+}
+function closeSheetsModal(){
+  document.getElementById('sheetsModalBg').style.display='none';
+}
+function saveSheetsUrl(){
+  const url = document.getElementById('sheetsUrlInput').value.trim();
+  if(!url){ alert('URL을 입력해주세요.'); return; }
+  APPS_SCRIPT_URL = url;
+  sheetsEnabled = true;
+  localStorage.setItem(SHEETS_URL_KEY, url);
+  updateSheetsBtnState(true);
+  closeSheetsModal();
+  // 연동 즉시 Sheets에서 데이터 로드
+  loadFromSheets();
+}
+
+// ── 연결 테스트 ──
+async function testSheetsConn(){
+  const url = document.getElementById('sheetsUrlInput').value.trim();
+  const el = document.getElementById('sheetsTestResult');
+  if(!url){ el.textContent='URL을 입력하세요'; return; }
+  el.textContent='⏳ 연결 중...'; el.style.color='#e67700';
+  try{
+    const res = await fetch(url+'?action=getAll');
+    const json = await res.json();
+    if(json.ok){
+      el.textContent='✅ 연결 성공!'; el.style.color='#2f9e44';
+    } else {
+      el.textContent='❌ 오류: '+json.error; el.style.color='#c92a2a';
+    }
+  } catch(e){
+    el.textContent='❌ CORS 오류 또는 URL 확인 필요'; el.style.color='#c92a2a';
+  }
+}
+
+// ── 헤더 버튼 상태 업데이트 ──
+function updateSheetsBtnState(connected){
+  const btn = document.getElementById('sheetsBtnHdr');
+  const txt = document.getElementById('sheetsBtnTxt');
+  if(!btn) return;
+  if(connected){
+    btn.style.borderColor='#34a853'; btn.style.color='#2f9e44';
+    txt.textContent='Sheets 연동 ✓';
+  } else {
+    btn.style.borderColor='var(--border)'; btn.style.color='var(--text2)';
+    txt.textContent='Sheets 연동';
+  }
+}
+
+// ── Sheets에서 데이터 읽기 ──
+async function loadFromSheets(){
+  if(!sheetsEnabled||!APPS_SCRIPT_URL) return;
+  const hintEl = document.getElementById('uploadHint');
+  if(hintEl) hintEl.textContent='Sheets에서 데이터 로드 중...';
+  try{
+    const res = await fetch(APPS_SCRIPT_URL+'?action=getAll');
+    const json = await res.json();
+    if(!json.ok) throw new Error(json.error);
+    const {schedule, ecs, sources} = json.data;
+
+    // 생산계획 반영
+    if(schedule && schedule.length > 0){
+      DB = schedule.map(r=>({
+        no:r.no, yard:r.yard||'', hull:r.hull||'', mw:parseFloat(r.mw)||10,
+        cls:r.cls||'', delivery:r.delivery||'',
+        cutting:r.cutting||null, welding:r.welding||null,
+        di_start:r.di_start||null, acid:r.acid||null,
+        assembly:r.assembly||null, fat_start:r.fat_start||null,
+        _source:r._source||''
+      }));
+    }
+    // ECS 반영
+    if(ecs && ecs.length > 0){
+      ECSDB = ecs.map(r=>({
+        hull:r.hull||'', yard:r.yard||'', maker:r.maker||'',
+        delivery:r.delivery||'-', di:r.di||'-', insp:r.insp||'-',
+        prog:parseFloat(r.prog)||0
+      }));
+    }
+    // 소스 패널 반영
+    if(sources && sources.length > 0){
+      DB_SOURCES = sources.map(s=>({filename:s.filename,company:s.company,count:parseInt(s.count)||0,data:[]}));
+      renderSrcPanel();
+    }
+    if(hintEl) hintEl.textContent=`Sheets 로드 완료: 생산계획 ${DB.length}건 / ECS ${ECSDB.length}건`;
+    selNo=null; init();
+  } catch(e){
+    if(hintEl) hintEl.textContent='Sheets 로드 실패: '+e.message;
+    console.error('Sheets 로드 오류:', e);
+  }
+}
+
+// ── Sheets에 생산계획 저장 ──
+async function saveScheduleToSheets(filename, company, rows){
+  if(!sheetsEnabled||!APPS_SCRIPT_URL) return;
+  try{
+    await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      body: JSON.stringify({
+        action:'saveSchedule',
+        filename, company,
+        count: rows.length,
+        rows: rows.map(r=>({...r, _source:filename}))
+      })
+    });
+  } catch(e){ console.warn('Sheets 저장 실패:', e.message); }
+}
+
+// ── Sheets에 ECS 저장 ──
+async function saveECSToSheets(rows, weekLabel){
+  if(!sheetsEnabled||!APPS_SCRIPT_URL) return;
+  try{
+    await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      body: JSON.stringify({
+        action:'saveECS',
+        rows: rows.map(r=>({...r, _week:weekLabel}))
+      })
+    });
+  } catch(e){ console.warn('ECS Sheets 저장 실패:', e.message); }
+}
+
+// ── Sheets 전체 초기화 ──
+async function clearSheetsData(){
+  if(!sheetsEnabled||!APPS_SCRIPT_URL) return;
+  try{
+    await fetch(APPS_SCRIPT_URL, {method:'POST', body:JSON.stringify({action:'clearAll'})});
+  } catch(e){ console.warn('Sheets 초기화 실패:', e.message); }
+}
+
+function init(){
+  // 기준일 자동 갱신
+  const td=new Date();
+  const yy=td.getFullYear();
+  const mm=String(td.getMonth()+1).padStart(2,'0');
+  const dd=String(td.getDate()).padStart(2,'0');
+  document.getElementById('refDate').textContent=`기준일: ${yy}-${mm}-${dd}`;
+  renderAxis(); renderLegend(); renderKPI(); updateGanttRange(ganttYear,ganttMonFrom,ganttMonTo); renderAxis(); renderGantt(DB); renderGCharts(DB);
+  updateHistoryCount();
+}
+
+function initWithRestore(){
+  // Sheets 연동 상태 버튼 업데이트
+  updateSheetsBtnState(!!localStorage.getItem(SHEETS_URL_KEY));
+  // Sheets 연동되어 있으면 Sheets에서 우선 로드, 아니면 localStorage 복원
+  if(sheetsEnabled && APPS_SCRIPT_URL){
+    loadFromSheets(); // 비동기, 내부에서 init() 호출
+  } else {
+    loadSourcesFromDB();
+    init();
+  }
+}
+initWithRestore();
+</script>
+
+<!-- Google Sheets 연동 모달 -->
+<div id="sheetsModalBg" class="sheets-modal-bg" style="display:none" onclick="if(event.target===this)closeSheetsModal()">
+  <div class="sheets-modal">
+    <h2>🟢 Google Sheets 연동 설정</h2>
+    <p>Apps Script Web App URL을 입력하면 모든 접속자가 같은 데이터를 실시간으로 공유할 수 있습니다.</p>
+
+    <div class="sheets-step">
+      <div class="sheets-step-num">1</div>
+      <div class="sheets-step-txt">
+        <strong>Google Sheets 새 파일 생성</strong> → 확장 프로그램 → Apps Script<br>
+        아래 첨부된 <strong>sheets_api.gs</strong> 코드 전체를 붙여넣고 저장
+      </div>
+    </div>
+    <div class="sheets-step">
+      <div class="sheets-step-num">2</div>
+      <div class="sheets-step-txt">
+        <strong>배포 → 새 배포 → 웹 앱</strong><br>
+        실행 계정: <strong>나(본인)</strong> / 액세스 권한: <strong>모든 사용자</strong> 선택 후 배포
+      </div>
+    </div>
+    <div class="sheets-step">
+      <div class="sheets-step-num">3</div>
+      <div class="sheets-step-txt">
+        <strong>배포 URL</strong>을 복사해서 아래에 붙여넣기<br>
+        <span style="color:#868e96">예) https://script.google.com/macros/s/AKfy.../exec</span>
+      </div>
+    </div>
+
+    <div style="margin-top:14px">
+      <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:5px">Apps Script 배포 URL</label>
+      <input id="sheetsUrlInput" class="sheets-input" type="text" placeholder="https://script.google.com/macros/s/.../exec">
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <button onclick="testSheetsConn()" style="height:32px;padding:0 14px;border-radius:7px;border:1px solid var(--border);background:#f9fafb;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;font-family:inherit">연결 테스트</button>
+        <span id="sheetsTestResult" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;padding:10px 14px;background:#fff8f0;border-radius:8px;border:1px solid #ffd8a8">
+      <div style="font-size:11px;font-weight:800;color:#e67700;margin-bottom:4px">⚠️ CORS 설정 안내</div>
+      <div style="font-size:11px;color:#664d03;line-height:1.6">
+        로컬 파일(file://)에서 실행 시 CORS 오류가 날 수 있습니다.<br>
+        해결책: 대시보드를 <strong>GitHub Pages / Netlify</strong> 등에 호스팅하거나<br>
+        Chrome을 <code style="background:#fff;padding:1px 5px;border-radius:3px">--disable-web-security</code> 옵션으로 실행하세요.
+      </div>
+    </div>
+
+    <div class="sheets-btn-row">
+      <button onclick="closeSheetsModal()" style="height:36px;padding:0 16px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;font-family:inherit">닫기</button>
+      <button onclick="saveSheetsUrl()" style="height:36px;padding:0 20px;border-radius:8px;border:none;background:var(--blue3);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">저장 및 연동</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
