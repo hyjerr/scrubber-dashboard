@@ -1743,38 +1743,64 @@ function loadSchedule(input){
       if(!c26.length){alert('2026년 날짜 컬럼 없음');return;}
       const minC=Math.min(...c26),maxC=Math.max(...c26);
 
-      // 데이터 파싱
+      // 데이터 파싱 (v2: 컬럼 구조 정확히 반영)
+      // row[0]=No, row[1]=조선소, row[2]=Hull No, row[3]=TYPE, row[4]=설계담당자
+      // row[5]=용량(MW), row[6]=규격, row[7]=선급, row[8]=DI/VI완료일
+      // row[9]=FAT예정일(row index 9 = col 10), row[10]=납기일(row index 10 = col 11)
+      // ※ XLSX.js raw:true → 0-based index, 실제 엑셀 col11 = row[10]
       const parsed=[];
       for(let r=dr+1;r<raw.length;r++){
         const row=raw[r];
-        if(!row||row[0]==null) continue;
-        // 2026년 컬럼에 내용이 있는 행만
-        if(!c26.some(i=>i<row.length&&row[i]!=null&&String(row[i]).trim()!='')) continue;
+        if(!row||row[0]==null||typeof row[0]!=='number'||row[0]<=0) continue;
 
         const no=row[0];
+        // 조선소: 줄바꿈 제거
         const yard=String(row[1]||'').replace(/\n/g,' ').trim().slice(0,15);
-        const hull=String(row[2]||'').replace(/\n/g,' ').trim().slice(0,20);
-        const mw=parseFloat(row[5])||10;
+        // Hull No: 첫 단어만 추출 (그룹명/설명 텍스트 제거)
+        const hullRaw=String(row[2]||'').replace(/\n/g,' ').trim();
+        const hull=hullRaw.split(/\s+/)[0].slice(0,20);
+        // MW: 숫자 추출 ('11MW', '31MW', 숫자 모두 처리)
+        const mwRaw=String(row[5]||'').replace(/\n/g,' ');
+        const mwMatch=mwRaw.match(/\d+/);
+        const mw=mwMatch?parseInt(mwMatch[0]):10;
+        // 선급
         const cls=String(row[7]||'').replace(/\n/g,'/').trim().slice(0,8);
-
-        // 납기일: row[10] (Date 객체 또는 문자열)
+        // FAT 예정일: row[9] (엑셀 col 10)
+        let fatStr='';
+        const fatRaw=row[9];
+        if(fatRaw instanceof Date) fatStr=fatRaw.toISOString().slice(0,10);
+        else if(fatRaw) fatStr=String(fatRaw).trim().slice(0,10);
+        // 납기일: row[10] (엑셀 col 11) ← 핵심 수정
         let delivStr='';
-        if(row[10] instanceof Date) delivStr=row[10].toISOString().slice(0,10);
-        else if(row[10]) delivStr=String(row[10]).slice(0,10);
+        const delRaw=row[10];
+        if(delRaw instanceof Date) delivStr=delRaw.toISOString().slice(0,10);
+        else if(delRaw){
+          // '2026.06.24 (예정)' 같은 형식 처리
+          const ds=String(delRaw).replace(/[（(][^)）]*[)）]/g,'').trim();
+          delivStr=ds.replace(/\./g,'-').slice(0,10);
+        }
+        // 2026년 납기 또는 2026년 공정 데이터 있는 행만 포함
+        const has2026=c26.some(i=>i<row.length&&row[i]!=null&&String(row[i]).trim()!='');
+        const del2026=delivStr.startsWith('2026')||delivStr.startsWith('2027');
+        if(!has2026&&!del2026) continue;
+        if(!hull) continue;
 
         let cutting=null,welding=null,di_start=null,acid=null,assembly=null,fat_start=null;
+        // fat_start: FAT 예정일 컬럼(row[9])에서 직접 가져오기
+        if(fatStr&&fatStr.length>=7) fat_start=fatStr.slice(5); // MM-DD
+        // 공정 날짜: 날짜 컬럼 텍스트에서 파싱
         for(let c=minC;c<=Math.min(maxC,row.length-1);c++){
           const v=row[c];
           if(v==null||v==='') continue;
           if(!dcm[c]) continue;
-          const sv=String(v).toUpperCase();
+          const sv=String(v).toUpperCase().trim();
           const dt=dcm[c].slice(5); // MM-DD
-          if(sv.includes('CUTTING')&&!cutting)   cutting=dt;
-          if((sv.includes('FIT')||sv.includes('WELDING'))&&!welding) welding=dt;
-          if((sv.includes('VI/DI')||sv.includes('DI'))&&!di_start)  di_start=dt;
-          if(sv.includes('ACID')&&!acid)         acid=dt;
-          if(String(v).includes('보온')&&!assembly) assembly=dt;
-          if(sv.includes('FAT')&&!fat_start)     fat_start=dt;
+          if((sv.includes('CUTTING')||sv==='절단')&&!cutting) cutting=dt;
+          if((sv.includes('FIT')||sv.includes('WELDING')||sv.includes('취부'))&&!welding) welding=dt;
+          if((sv.includes('DI')&&!sv.includes('ACID'))||sv.includes('VI/DI')){if(!di_start) di_start=dt;}
+          if((sv.includes('ACID')||sv.includes('산처리'))&&!acid) acid=dt;
+          if((String(v).includes('보온')||sv.includes('ASSEMBLY'))&&!assembly) assembly=dt;
+          if(sv==='FAT'&&!fat_start) fat_start=dt;
         }
         parsed.push({no,yard,hull,mw,cls,delivery:delivStr,cutting,welding,di_start,acid,assembly,fat_start});
       }
