@@ -1712,6 +1712,7 @@ function cf(f,btn){
 
 /* ══ FILE UPLOAD ══ */
 function loadSchedule(input){
+  if(!adminUnlocked){ openAdminModal(()=>document.getElementById('fileSchedule').click()); return; }
   const file=input.files[0]; if(!file) return;
   document.getElementById('uploadHint').textContent='생산계획 파싱 중...';
   const reader=new FileReader();
@@ -1820,6 +1821,7 @@ function loadSchedule(input){
 }
 
 function loadECS(input){
+  if(!adminUnlocked){ openAdminModal(()=>document.getElementById('fileECS').click()); return; }
   const file=input.files[0]; if(!file) return;
   document.getElementById('uploadHint').textContent='ECS 파싱 중...';
   const reader=new FileReader();
@@ -2713,17 +2715,7 @@ function requireAdmin(fn){
   else { openAdminModal(fn); }
 }
 
-// loadSchedule/loadECS 앞에 관리자 체크
-const _origLoadSchedule = loadSchedule;
-function loadSchedule(input){
-  if(!adminUnlocked){ openAdminModal(()=>{ input.click(); }); return; }
-  _origLoadSchedule(input);
-}
-const _origLoadECS = loadECS;
-function loadECS(input){
-  if(!adminUnlocked){ openAdminModal(()=>{ input.click(); }); return; }
-  _origLoadECS(input);
-}
+// 관리자 체크는 각 함수 내부에서 처리
 
 
 checkAdminSession();
