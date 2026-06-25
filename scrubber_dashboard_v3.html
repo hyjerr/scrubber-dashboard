@@ -311,6 +311,21 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 .sheets-status.err{background:#ffe3e3;color:#c92a2a}
 .sheets-status.loading{background:#fff3bf;color:#e67700}
 
+
+/* ══ 관리자 잠금 ══ */
+.admin-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:center;justify-content:center}
+.admin-modal{background:#fff;border-radius:14px;padding:28px 32px;width:380px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.2);text-align:center}
+.admin-modal h3{font-size:16px;font-weight:800;color:var(--text1);margin-bottom:8px}
+.admin-modal p{font-size:12px;color:var(--text2);margin-bottom:18px;line-height:1.6}
+.admin-pw-input{width:100%;height:42px;padding:0 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;text-align:center;letter-spacing:4px;outline:none;transition:border .15s;margin-bottom:8px}
+.admin-pw-input:focus{border-color:var(--blue3);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.admin-pw-err{font-size:11px;color:#e03131;height:16px;margin-bottom:10px}
+.admin-btn-row{display:flex;gap:8px;justify-content:center}
+.admin-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;cursor:pointer;transition:all .15s}
+.admin-badge.locked{background:#fff3bf;color:#e67700;border:1px solid #ffe066}
+.admin-badge.unlocked{background:#d3f9d8;color:#2f9e44;border:1px solid #8ce99a}
+.admin-lock-overlay{position:absolute;inset:0;background:transparent;z-index:50;cursor:not-allowed;border-radius:inherit}
+
 </style>
 </head>
 <body>
@@ -324,7 +339,13 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
   </div>
   <div class="hdr-r">
     <div class="upload-wrap">
-      <div class="upload-row">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+        <span id="adminBadge" class="admin-badge locked" onclick="openAdminModal()">
+          🔒 관리자 모드
+        </span>
+        <span id="adminHint" style="font-size:10px;color:var(--text3)">업로드/삭제는 관리자만 가능</span>
+      </div>
+      <div class="upload-row" id="uploadRowWrap" style="position:relative">
         <label class="upload-btn" title="생산계획 Excel 업로드">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 11v1a2 2 0 002 2h6a2 2 0 002-2v-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           생산계획 Excel
@@ -335,6 +356,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
           ECS 공정현황
           <input type="file" id="fileECS" accept=".xlsx,.xls" onchange="loadECS(this)">
         </label>
+        <div id="uploadOverlay" class="admin-lock-overlay" onclick="openAdminModal()" title="관리자 로그인 필요"></div>
       </div>
       <div class="upload-hint" id="uploadHint">파일 업로드 시 자동 반영 | 두 파일 모두 업로드 가능</div>
     </div>
@@ -353,7 +375,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
 <div class="src-panel" id="srcPanel">
   <div class="src-panel-title">
     <span>📁 업로드된 생산계획 파일 <span style="font-size:10px;background:#d3f9d8;color:#2f9e44;border-radius:4px;padding:1px 7px;margin-left:6px;font-weight:700">💾 브라우저 자동 저장</span></span>
-    <button onclick="clearAllSources()" style="font-size:11px;color:#e03131;background:none;border:1px solid #ffc9c9;border-radius:6px;padding:2px 10px;cursor:pointer;font-weight:700;font-family:inherit">전체 초기화</button>
+    <button onclick="requireAdmin(clearAllSources)" style="font-size:11px;color:#e03131;background:none;border:1px solid #ffc9c9;border-radius:6px;padding:2px 10px;cursor:pointer;font-weight:700;font-family:inherit" id="clearAllBtn">전체 초기화</button>
   </div>
   <div class="src-list" id="srcList"></div>
   <div class="src-merge-info" id="srcMergeInfo"></div>
@@ -2371,7 +2393,7 @@ function rebuildDB(){
   DB.forEach((r,i) => r._idx = i+1);
 }
 
-function removeSource(filename){
+function removeSource(filename){ if(!adminUnlocked){ openAdminModal(()=>removeSource(filename)); return; }
   DB_SOURCES = DB_SOURCES.filter(s => s.filename !== filename);
   if(DB_SOURCES.length === 0){
     // 모두 지우면 내장 데이터로 복구
@@ -2585,6 +2607,100 @@ function initWithRestore(){
     init();
   }
 }
+
+/* ══════════════════════════════════════════════════════
+   관리자 인증 (비밀번호: ws2026!)
+   변경하려면 아래 ADMIN_PW 값을 수정하세요
+══════════════════════════════════════════════════════ */
+const ADMIN_PW = 'ws2026!';  // ← 비밀번호 변경 가능
+const ADMIN_KEY = 'scrubber_admin_auth';
+let adminUnlocked = false;
+let pendingAdminAction = null;
+
+function checkAdminSession(){
+  // 세션 중 한번 인증하면 유지 (브라우저 닫으면 초기화)
+  adminUnlocked = sessionStorage.getItem(ADMIN_KEY) === 'true';
+  updateAdminUI();
+}
+
+function updateAdminUI(){
+  const badge = document.getElementById('adminBadge');
+  const hint  = document.getElementById('adminHint');
+  const overlay = document.getElementById('uploadOverlay');
+  if(!badge) return;
+  if(adminUnlocked){
+    badge.className = 'admin-badge unlocked';
+    badge.innerHTML = '🔓 관리자 모드';
+    badge.onclick = lockAdmin;
+    if(hint) hint.textContent = '업로드·삭제 가능 | 클릭하여 잠금';
+    if(overlay) overlay.style.display = 'none';
+  } else {
+    badge.className = 'admin-badge locked';
+    badge.innerHTML = '🔒 관리자 모드';
+    badge.onclick = openAdminModal;
+    if(hint) hint.textContent = '업로드/삭제는 관리자만 가능';
+    if(overlay) overlay.style.display = '';
+  }
+}
+
+function openAdminModal(callback){
+  if(adminUnlocked){
+    if(callback) callback();
+    return;
+  }
+  pendingAdminAction = callback || null;
+  document.getElementById('adminModalBg').style.display = 'flex';
+  document.getElementById('adminPwInput').value = '';
+  document.getElementById('adminPwErr').textContent = '';
+  setTimeout(()=>document.getElementById('adminPwInput').focus(), 100);
+}
+
+function closeAdminModal(){
+  document.getElementById('adminModalBg').style.display = 'none';
+  pendingAdminAction = null;
+}
+
+function submitAdminPw(){
+  const pw = document.getElementById('adminPwInput').value;
+  if(pw === ADMIN_PW){
+    adminUnlocked = true;
+    sessionStorage.setItem(ADMIN_KEY, 'true');
+    updateAdminUI();
+    closeAdminModal();
+    if(pendingAdminAction){ pendingAdminAction(); pendingAdminAction=null; }
+  } else {
+    document.getElementById('adminPwErr').textContent = '❌ 비밀번호가 틀렸습니다';
+    document.getElementById('adminPwInput').value = '';
+    document.getElementById('adminPwInput').focus();
+  }
+}
+
+function lockAdmin(){
+  adminUnlocked = false;
+  sessionStorage.removeItem(ADMIN_KEY);
+  updateAdminUI();
+}
+
+// 관리자 권한 필요한 액션 래퍼
+function requireAdmin(fn){
+  if(adminUnlocked){ fn(); }
+  else { openAdminModal(fn); }
+}
+
+// loadSchedule/loadECS 앞에 관리자 체크
+const _origLoadSchedule = loadSchedule;
+function loadSchedule(input){
+  if(!adminUnlocked){ openAdminModal(()=>{ input.click(); }); return; }
+  _origLoadSchedule(input);
+}
+const _origLoadECS = loadECS;
+function loadECS(input){
+  if(!adminUnlocked){ openAdminModal(()=>{ input.click(); }); return; }
+  _origLoadECS(input);
+}
+
+
+checkAdminSession();
 initWithRestore();
 </script>
 
@@ -2638,6 +2754,24 @@ initWithRestore();
       <button onclick="closeSheetsModal()" style="height:36px;padding:0 16px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;font-family:inherit">닫기</button>
       <button onclick="saveSheetsUrl()" style="height:36px;padding:0 20px;border-radius:8px;border:none;background:var(--blue3);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">저장 및 연동</button>
     </div>
+  </div>
+</div>
+
+
+<!-- 관리자 인증 모달 -->
+<div id="adminModalBg" class="admin-modal-bg" style="display:none" onclick="if(event.target===this)closeAdminModal()">
+  <div class="admin-modal">
+    <div style="font-size:32px;margin-bottom:10px">🔐</div>
+    <h3>관리자 인증</h3>
+    <p>업로드·삭제·초기화는 관리자만 가능합니다.<br>비밀번호를 입력하세요.</p>
+    <input id="adminPwInput" class="admin-pw-input" type="password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')submitAdminPw()">
+    <div id="adminPwErr" class="admin-pw-err"></div>
+    <div class="admin-btn-row">
+      <button onclick="closeAdminModal()" style="height:38px;padding:0 20px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;font-family:inherit">취소</button>
+      <button onclick="submitAdminPw()" style="height:38px;padding:0 24px;border-radius:8px;border:none;background:var(--blue3);color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">확인</button>
+    </div>
+    <div style="margin-top:14px;font-size:10px;color:var(--text3)">비밀번호 분실 시 대시보드 코드 수정 필요</div>
   </div>
 </div>
 
