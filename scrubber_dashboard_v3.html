@@ -874,10 +874,14 @@ function leadtime(r){
 function calcProcProg(r){
   const now=new Date(); now.setHours(0,0,0,0);
   function pd(s){
-    if(!s||s==='-') return null;
-    if(s.startsWith('2026')) return p2d(s);
-    if(s.includes('/')) return p2d('2026-'+s.replace('/','-'));
-    return p2d('2026-'+s);
+    if(!s||s==='-'||s===null) return null;
+    if(s instanceof Date) return isNaN(s)?null:s;
+    const str=String(s).trim();
+    if(!str||str==='-') return null;
+    if(str.startsWith('2026')||str.startsWith('2027')) return p2d(str.slice(0,10));
+    if(str.includes('/')) return p2d('2026-'+str.replace('/','-').slice(0,5));
+    if(str.includes('-')) return p2d('2026-'+str.slice(0,5));
+    return null;
   }
   const procMap={
     cutting:  r.cutting,
@@ -910,7 +914,7 @@ function calcProcProg(r){
 }
 
 function getStatus(r){
-  const d=p2d(r.delivery);
+  const d=r.delivery?p2d(String(r.delivery)):null;
   if(d&&d<TODAY) return 'done';
   // 공정 착수일 중 가장 빠른 것이 TODAY 이전이면 '제작중'
   const firstStart = r.cutting||r.welding||r.di_start||r.acid||r.assembly||r.fat_start;
@@ -1111,8 +1115,8 @@ function renderGantt(data){
     // 고정 컬럼 행
     fixedRows+=`<div class="gantt-fixed-row" onclick="rowClick(${r.no})" style="cursor:pointer">
       <div class="gfc-no">${r.no}</div>
-      <div class="gfc-yard" title="${r.yard}">${r.yard.slice(0,11)}</div>
-      <div class="gfc-hull" title="${r.hull}">${r.hull.slice(0,13)}</div>
+      <div class="gfc-yard" title="${r.yard}">${String(r.yard||'').slice(0,11)}</div>
+      <div class="gfc-hull" title="${r.hull}">${String(r.hull||"").slice(0,13)}</div>
       <div class="gfc-mw" style="color:${sc}">${r.mw}</div>
       <div class="gfc-cls">${r.cls}</div>
       <div class="gfc-st"><span class="bdg ${bdgCls}">${SL[st]}</span></div>
@@ -1197,7 +1201,7 @@ function renderGCharts(data){
   // ── 월별 납기 건수
   const mo=[0,0,0,0,0,0];
   data.forEach(r=>{const d=p2d(r.delivery);if(d&&d.getFullYear()===2026&&d.getMonth()<6)mo[d.getMonth()]++;});
-  const ym={};data.forEach(r=>{ym[r.yard.slice(0,8)]=(ym[r.yard.slice(0,8)]||0)+1;});
+  const ym={};data.forEach(r=>{ym[String(r.yard||"").slice(0,8)]=(ym[String(r.yard||"").slice(0,8)]||0)+1;});
   const yards=Object.entries(ym).sort((a,b)=>b[1]-a[1]).slice(0,8);
   if(charts.del)charts.del.destroy();
   charts.del=new Chart(document.getElementById('cDel'),{type:'bar',
@@ -1343,7 +1347,7 @@ function renderECS(){
       <td style="font-size:13px;font-weight:700;white-space:nowrap">${r.hull}</td>
       <td style="font-size:12px;color:#5a5c66;white-space:nowrap">${r.yard}</td>
       <td style="font-size:12px;white-space:nowrap">${r.maker}</td>
-      <td style="font-size:12px;white-space:nowrap;text-align:center">${r.delivery.slice(5)}</td>
+      <td style="font-size:12px;white-space:nowrap;text-align:center">${String(r.delivery||"").slice(5)}</td>
       <td style="font-size:12px;white-space:nowrap;text-align:center">${r.di}</td>
       <td style="font-size:12px;white-space:nowrap;text-align:center">${r.insp}</td>
       <td>
@@ -1586,7 +1590,7 @@ function renderCostCharts(){
         tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${(ctx.raw/10000).toFixed(1)}억`}}}}});
   if(charts.cbar)charts.cbar.destroy();
   charts.cbar=new Chart(document.getElementById('cCostBar'),{type:'bar',
-    data:{labels:d.map(r=>r.hull.slice(0,10)),datasets:[{data:d.map(r=>cAmt(r.mw)),
+    data:{labels:d.map(r=>String(r.hull||"").slice(0,10)),datasets:[{data:d.map(r=>cAmt(r.mw)),
       backgroundColor:d.map(r=>{const st=getStatus(r);return SC[st]+'88';}),
       borderColor:d.map(r=>SC[getStatus(r)]),borderWidth:1,borderRadius:3,borderSkipped:false}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
@@ -1600,7 +1604,7 @@ function renderCostCharts(){
 function renderLT(){
   const active=DB.filter(r=>['prog','fab','plan'].includes(getStatus(r))&&r.delivery);
   // D-day chart
-  const ddData=active.slice(0,12).map(r=>({hull:r.hull.slice(0,10),d:dday(r.delivery)||0,st:getStatus(r)}));
+  const ddData=active.slice(0,12).map(r=>({hull:String(r.hull||"").slice(0,10),d:dday(r.delivery)||0,st:getStatus(r)}));
   if(charts.dday)charts.dday.destroy();
   charts.dday=new Chart(document.getElementById('cDday'),{type:'bar',
     data:{labels:ddData.map(d=>d.hull),datasets:[{
@@ -1618,7 +1622,7 @@ function renderLT(){
     const start=r.cutting||r.di_start;
     const sd=p2d('2026-'+start),ed=p2d(r.delivery);
     const lt=sd&&ed?Math.round((ed-sd)/864e5):null;
-    return{hull:r.hull.slice(0,10),lt,mw:r.mw};
+    return{hull:String(r.hull||"").slice(0,10),lt,mw:r.mw};
   }).filter(r=>r.lt!==null).slice(0,14);
   if(charts.lt)charts.lt.destroy();
   charts.lt=new Chart(document.getElementById('cLT'),{type:'bar',
@@ -1635,7 +1639,7 @@ function renderLT(){
     const ecsp=getECSProg(r);
     const pg=ecsp!==null?ecsp:(getStatus(r)==='done'?1:0);
     const actual=Math.round(plan*pg);
-    return{hull:r.hull.slice(0,10),plan,actual,mw:r.mw};
+    return{hull:String(r.hull||"").slice(0,10),plan,actual,mw:r.mw};
   });
   if(charts.mh)charts.mh.destroy();
   charts.mh=new Chart(document.getElementById('cMH'),{type:'bar',
@@ -1662,11 +1666,11 @@ function renderLT(){
     const pg=ecsp!==null?ecsp:(getStatus(r)==='done'?1:0);
     const actual=Math.round(plan*pg);
     return `<tr>
-      <td style="font-weight:700;font-size:10px">${r.hull.slice(0,14)}</td>
-      <td style="font-size:9px;color:#6b7280">${r.yard.slice(0,8)}</td>
+      <td style="font-weight:700;font-size:10px">${String(r.hull||"").slice(0,14)}</td>
+      <td style="font-size:9px;color:#6b7280">${String(r.yard||"").slice(0,8)}</td>
       <td style="text-align:center">${r.mw}</td>
       <td style="font-size:10px;text-align:center">${start||'-'}</td>
-      <td style="font-size:10px;text-align:center">${r.delivery.slice(5)}</td>
+      <td style="font-size:10px;text-align:center">${String(r.delivery||"").slice(5)}</td>
       <td style="text-align:center;font-weight:700">${lt}일</td>
       <td class="${ddc}" style="text-align:center;font-weight:800">${dds}</td>
       <td style="text-align:right;color:#6b7280">${plan.toLocaleString()}</td>
@@ -2013,7 +2017,7 @@ function renderSearchResults(results, kw){
       }).join('')}
     </div>`;
     const hullHl=hl(r.hull,kw);
-    const yardHl=hl(r.yard.slice(0,12),kw);
+    const yardHl=hl(String(r.yard||"").slice(0,12),kw);
     const sel=selectedSearchNo===r.no?' style="background:#eff6ff"':'';
     return `<div class="sr-row"${sel} onclick="showSearchDetail(${r.no})">
       <div class="src dim">${r.no}</div>
@@ -2028,7 +2032,7 @@ function renderSearchResults(results, kw){
           <span style="font-size:12px;color:${sc};font-weight:800;min-width:28px">${pg}%</span>
         </div>
       </div>
-      <div class="src" style="text-align:center;font-size:12px">${r.delivery?r.delivery.slice(5):'-'}</div>
+      <div class="src" style="text-align:center;font-size:12px">${r.delivery?String(r.delivery).slice(5):'-'}</div>
       <div class="src ${ddc}" style="text-align:center;font-weight:800;font-size:12px">${dds}</div>
       <div class="src" style="text-align:right;font-size:12px;font-weight:700;color:#185fa5">${(amt/10000).toFixed(1)}억</div>
       <div class="src" style="padding:2px 4px">${stepsHtml}</div>
@@ -2087,7 +2091,7 @@ function showSearchDetail(no){
     </div>
     <div class="detail-grid">
       <div class="det-item"><div class="dl">공정률</div><div class="dv" style="font-size:20px;color:${sc}">${pg}%</div><div style="height:4px;background:#f0efe8;border-radius:2px;margin-top:5px;overflow:hidden"><div style="height:100%;width:${pg}%;background:${sc};border-radius:2px"></div></div></div>
-      <div class="det-item"><div class="dl">리드타임</div><div class="dv" style="font-size:18px;color:#2563eb">${lt}<span style="font-size:11px;font-weight:400">일</span></div><div style="font-size:9px;color:#6b7280;margin-top:2px">${start||'-'} → ${r.delivery?r.delivery.slice(5):'-'}</div></div>
+      <div class="det-item"><div class="dl">리드타임</div><div class="dv" style="font-size:18px;color:#2563eb">${lt}<span style="font-size:11px;font-weight:400">일</span></div><div style="font-size:9px;color:#6b7280;margin-top:2px">${start||'-'} → ${r.delivery?String(r.delivery).slice(5):'-'}</div></div>
       <div class="det-item"><div class="dl">D-day</div><div class="dv" style="font-size:18px" class_extra="${ddClass(r.delivery)}">${ddStr(r.delivery)}</div><div style="font-size:9px;color:#6b7280;margin-top:2px">납기 ${r.delivery||'-'}</div></div>
       <div class="det-item"><div class="dl">계약금액(추정)</div><div class="dv" style="color:#185fa5">${(amt/10000).toFixed(1)}<span style="font-size:11px;font-weight:400">억</span></div><div style="font-size:9px;color:#6b7280;margin-top:2px">집행 ${(paid/10000).toFixed(1)}억 / 잔 ${((amt-paid)/10000).toFixed(1)}억</div></div>
       <div class="det-item"><div class="dl">계획 M/H</div><div class="dv" style="color:#534ab7">${planMH.toLocaleString()}<span style="font-size:11px;font-weight:400">MH</span></div><div style="font-size:9px;color:#6b7280;margin-top:2px">${r.mw}MW 기준</div></div>
@@ -2545,22 +2549,37 @@ async function loadFromSheets(){
 
     // 생산계획 반영
     if(schedule && schedule.length > 0){
-      DB = schedule.map(r=>({
-        no:r.no, yard:r.yard||'', hull:r.hull||'', mw:parseFloat(r.mw)||10,
-        cls:r.cls||'', delivery:r.delivery||'',
-        cutting:r.cutting||null, welding:r.welding||null,
-        di_start:r.di_start||null, acid:r.acid||null,
-        assembly:r.assembly||null, fat_start:r.fat_start||null,
-        _source:r._source||''
-      }));
+      DB = schedule.map(r=>{
+        // 날짜 필드: Date객체/숫자/문자열 모두 문자열로 변환
+        function toStr(v){
+          if(!v) return null;
+          if(v instanceof Date) return v.toISOString().slice(0,10);
+          const s=String(v).trim();
+          // 엑셀 시리얼 숫자 처리 (예: 46123)
+          if(/^\d{5}$/.test(s)){
+            const d=new Date(Math.round((parseFloat(s)-25569)*864e5));
+            return d.toISOString().slice(0,10);
+          }
+          return s.slice(0,10)||null;
+        }
+        return {
+          no:parseInt(r.no)||0, yard:String(r.yard||'').trim(), hull:String(r.hull||'').trim(),
+          mw:parseFloat(String(r.mw||'').replace(/[^\d.]/g,''))||10,
+          cls:String(r.cls||''), delivery:toStr(r.delivery)||'',
+          cutting:toStr(r.cutting), welding:toStr(r.welding),
+          di_start:toStr(r.di_start), acid:toStr(r.acid),
+          assembly:toStr(r.assembly), fat_start:toStr(r.fat_start),
+          _source:String(r._source||'')
+        };
+      }).filter(r=>r.hull); // 빈 hull 제거
     }
     // ECS 반영
     if(ecs && ecs.length > 0){
       ECSDB = ecs.map(r=>({
-        hull:r.hull||'', yard:r.yard||'', maker:r.maker||'',
-        delivery:r.delivery||'-', di:r.di||'-', insp:r.insp||'-',
-        prog:parseFloat(r.prog)||0
-      }));
+        hull:String(r.hull||''), yard:String(r.yard||''), maker:String(r.maker||''),
+        delivery:String(r.delivery||'-'), di:String(r.di||'-'), insp:String(r.insp||'-'),
+        prog:parseFloat(String(r.prog||'0').replace(/[^\d.]/g,''))||0
+      })).filter(r=>r.hull);
     }
     // 소스 패널 반영
     if(sources && sources.length > 0){
@@ -2570,8 +2589,11 @@ async function loadFromSheets(){
     if(hintEl) hintEl.textContent=`Sheets 로드 완료: 생산계획 ${DB.length}건 / ECS ${ECSDB.length}건`;
     selNo=null; init();
   } catch(e){
-    if(hintEl) hintEl.textContent='Sheets 로드 실패: '+e.message;
+    if(hintEl) hintEl.textContent='Sheets 로드 실패: '+e.message+' | localStorage 복원 시도';
     console.error('Sheets 로드 오류:', e);
+    // Sheets 실패 시 localStorage에서 복원
+    loadSourcesFromDB();
+    init();
   }
 }
 
