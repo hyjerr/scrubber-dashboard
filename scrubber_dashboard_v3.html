@@ -851,6 +851,50 @@ Chart.defaults.font.size=12; Chart.defaults.color='#6b7280';
 const GC='rgba(0,0,0,.04)';
 
 function p2d(s){ if(!s)return null; const d=new Date(s); return isNaN(d)?null:d; }
+
+// Sheets/Excel에서 받아온 행 데이터 완전 정제
+function sanitizeRow(r){
+  function toDateStr(v){
+    if(!v||v==='-'||v==='null'||v==='undefined') return null;
+    if(v instanceof Date){ return isNaN(v)?null:v.toISOString().slice(0,10); }
+    const s=String(v).trim().replace(/[（(][^)）]*[)）]/g,'').trim();
+    if(!s||s==='-') return null;
+    // 엑셀 시리얼 숫자 (44000~50000 범위)
+    if(/^\d{5}$/.test(s)&&parseInt(s)>40000){
+      const d=new Date(Math.round((parseFloat(s)-25569)*864e5));
+      return isNaN(d)?null:d.toISOString().slice(0,10);
+    }
+    // YYYY-MM-DD 또는 YYYY.MM.DD
+    const m=s.match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/);
+    if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+    // MM-DD 또는 MM/DD
+    const m2=s.match(/^(\d{1,2})[.\-\/](\d{1,2})$/);
+    if(m2) return `${m2[1].padStart(2,'0')}-${m2[2].padStart(2,'0')}`;
+    return null;
+  }
+  function toStr(v){ return v!=null?String(v).trim():''; }
+  function toNum(v){
+    const n=parseFloat(String(v||'').replace(/[^\d.]/g,''));
+    return isNaN(n)?10:n;
+  }
+  return {
+    no:     parseInt(r.no)||0,
+    yard:   toStr(r.yard).slice(0,20),
+    hull:   toStr(r.hull).split(/\s+/)[0].slice(0,20),
+    mw:     toNum(r.mw),
+    cls:    toStr(r.cls).slice(0,10),
+    delivery:  toDateStr(r.delivery)||'',
+    cutting:   toDateStr(r.cutting),
+    welding:   toDateStr(r.welding),
+    di_start:  toDateStr(r.di_start),
+    acid:      toDateStr(r.acid),
+    assembly:  toDateStr(r.assembly),
+    fat_start: toDateStr(r.fat_start),
+    _source:   toStr(r._source)
+  };
+}
+
+
 function pct(d){ if(!d)return null; const v=(p2d(d)-RS)/864e5/TDAYS*100; return Math.max(0,Math.min(100,v)); }
 function dday(del){ if(!del)return null; return Math.round((p2d(del)-TODAY)/864e5); }
 function ddStr(del){
@@ -874,13 +918,16 @@ function leadtime(r){
 function calcProcProg(r){
   const now=new Date(); now.setHours(0,0,0,0);
   function pd(s){
-    if(!s||s==='-'||s===null) return null;
+    if(!s||s===null||s===undefined) return null;
     if(s instanceof Date) return isNaN(s)?null:s;
     const str=String(s).trim();
-    if(!str||str==='-') return null;
-    if(str.startsWith('2026')||str.startsWith('2027')) return p2d(str.slice(0,10));
-    if(str.includes('/')) return p2d('2026-'+str.replace('/','-').slice(0,5));
-    if(str.includes('-')) return p2d('2026-'+str.slice(0,5));
+    if(!str||str==='-'||str==='null') return null;
+    // YYYY-MM-DD 전체 날짜
+    if(/^\d{4}-\d{2}-\d{2}/.test(str)) return p2d(str.slice(0,10));
+    // MM-DD 형식
+    if(/^\d{2}-\d{2}$/.test(str)) return p2d(ganttYear+'-'+str);
+    // MM/DD 형식
+    if(/^\d{1,2}\/\d{1,2}$/.test(str)) return p2d(ganttYear+'-'+str.replace('/','-'));
     return null;
   }
   const procMap={
@@ -2549,29 +2596,7 @@ async function loadFromSheets(){
 
     // 생산계획 반영
     if(schedule && schedule.length > 0){
-      DB = schedule.map(r=>{
-        // 날짜 필드: Date객체/숫자/문자열 모두 문자열로 변환
-        function toStr(v){
-          if(!v) return null;
-          if(v instanceof Date) return v.toISOString().slice(0,10);
-          const s=String(v).trim();
-          // 엑셀 시리얼 숫자 처리 (예: 46123)
-          if(/^\d{5}$/.test(s)){
-            const d=new Date(Math.round((parseFloat(s)-25569)*864e5));
-            return d.toISOString().slice(0,10);
-          }
-          return s.slice(0,10)||null;
-        }
-        return {
-          no:parseInt(r.no)||0, yard:String(r.yard||'').trim(), hull:String(r.hull||'').trim(),
-          mw:parseFloat(String(r.mw||'').replace(/[^\d.]/g,''))||10,
-          cls:String(r.cls||''), delivery:toStr(r.delivery)||'',
-          cutting:toStr(r.cutting), welding:toStr(r.welding),
-          di_start:toStr(r.di_start), acid:toStr(r.acid),
-          assembly:toStr(r.assembly), fat_start:toStr(r.fat_start),
-          _source:String(r._source||'')
-        };
-      }).filter(r=>r.hull); // 빈 hull 제거
+      DB = schedule.map(r=>sanitizeRow(r)).filter(r=>r.hull);
     }
     // ECS 반영
     if(ecs && ecs.length > 0){
