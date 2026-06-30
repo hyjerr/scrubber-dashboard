@@ -1950,16 +1950,18 @@ function loadECS(input){
       }
       if(!parsed.length){alert('ECS 파싱 데이터 없음\n\n시트: '+shn+'\n행'+hdr+'부터 탐색\n\n파일 구조를 확인하거나 문의해주세요.');return;}
 
-      // 덮어쓰기 대신 병합 (Hull No. 기준)
-      mergeECSData(file.name, parsed);
+      // 주차 라벨 먼저 계산
+      const weekLabel = extractWeekLabel(file.name);
+
+      // 덮어쓰기 대신 병합 (Hull No. 기준, 각 행에 weekLabel 고정 부여)
+      mergeECSData(file.name, parsed, weekLabel);
 
       // ── 주차 이력 자동 저장 ──
-      const weekLabel = extractWeekLabel(file.name);
       saveHistoryEntry(weekLabel, parsed);
 
       document.getElementById('uploadHint').textContent=`ECS: ${file.name} (${parsed.length}건) 병합 완료 → 총 ${ECSDB.length}건 | 이력: ${weekLabel}`;
-      // Sheets에도 저장 (연동 시) — 병합된 전체 ECSDB 저장
-      saveECSToSheets(ECSDB, weekLabel);
+      // Sheets에도 저장 — 이번에 업로드한 행만 전송 (기존 행의 _week 보존)
+      saveECSToSheets(parsed.map(r=>({...r,_week:weekLabel})), weekLabel);
       document.getElementById('ecsWeek').innerHTML=`<span class="wbdg">${weekLabel}</span>`;
       renderKPI();
       if(activeTab===2)renderECS();
@@ -2250,15 +2252,18 @@ function loadECSSourcesFromDB(){
 }
 
 // ECS 데이터 병합 (Hull No. 기준 — 동일 호선은 최신 파일이 덮어씀)
-function mergeECSData(filename, newRows){
+function mergeECSData(filename, newRows, weekLabel){
   const compMatch = filename.match(/\[([^\]]+)\]/) || filename.match(/^([^_\[]+)/);
   const company = compMatch ? compMatch[1].trim().slice(0,20) : filename.slice(0,15);
 
+  // 각 행에 해당 파일의 주차 라벨을 고정으로 저장 (이후 절대 덮어쓰지 않음)
+  const taggedRows = newRows.map(r=>({...r, _week: weekLabel || extractWeekLabel(filename)}));
+
   const existIdx = ECS_SOURCES.findIndex(s => s.filename === filename);
   if(existIdx >= 0){
-    ECS_SOURCES[existIdx] = {filename, company, count:newRows.length, data:newRows};
+    ECS_SOURCES[existIdx] = {filename, company, count:taggedRows.length, data:taggedRows};
   } else {
-    ECS_SOURCES.push({filename, company, count:newRows.length, data:newRows});
+    ECS_SOURCES.push({filename, company, count:taggedRows.length, data:taggedRows});
   }
   rebuildECSDB();
   renderECSSrcPanel();
@@ -2756,7 +2761,8 @@ async function saveECSToSheets(rows, weekLabel){
       method:'POST',
       body: JSON.stringify({
         action:'saveECS',
-        rows: rows.map(r=>({...r, _week:weekLabel}))
+        // rows에 이미 _week가 있으면 보존, 없으면만 weekLabel 적용
+        rows: rows.map(r=>({...r, _week: r._week || weekLabel}))
       })
     });
   } catch(e){ console.warn('ECS Sheets 저장 실패:', e.message); }
