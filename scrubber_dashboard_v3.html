@@ -548,7 +548,7 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
   </div>
   <div class="g2">
     <div class="card">
-      <div class="card-title">납기 준수율 <span>완료 프로젝트 기준</span></div>
+      <div class="card-title">프로젝트 상태 분포 <span>전체 프로젝트 기준 — 완료건은 납기 준수/지연으로 세분화</span></div>
       <div class="cw" style="height:180px"><canvas id="cOnTime"></canvas></div>
     </div>
     <div class="card">
@@ -1429,7 +1429,7 @@ function renderECS(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
       scales:{x:{grid:{color:GC}},y:{grid:{color:GC},ticks:{stepSize:1}}}}});
 
-  // on-time chart
+  // 프로젝트 상태 분포 차트 (납기준수 / 납기지연 / 제작중 / 제작전)
   const doneItems=DB.filter(r=>getStatus(r)==='done');
   const onT=doneItems.filter(r=>{
     const delDate=p2d(r.delivery); if(!delDate) return true;
@@ -1444,13 +1444,39 @@ function renderECS(){
     return true;
   }).length;
   const offT=doneItems.length-onT;
+  const activeCnt=DB.filter(r=>getStatus(r)==='active').length;
+  const beforeCnt=DB.filter(r=>getStatus(r)==='before').length;
+  const totalAll=onT+offT+activeCnt+beforeCnt;
+
   if(charts.ontime)charts.ontime.destroy();
   charts.ontime=new Chart(document.getElementById('cOnTime'),{type:'doughnut',
-    data:{labels:['납기 준수','납기 지연'],datasets:[{data:[onT,offT],
-      backgroundColor:['#3b6d11','#e24b4a'],borderWidth:2,borderColor:'#fff'}]},
+    data:{labels:['납기 준수','납기 지연','제작중','제작전'],datasets:[{
+      data:[onT,offT,activeCnt,beforeCnt],
+      backgroundColor:['#16a34a','#dc2626','#d97706','#9ca3af'],
+      borderWidth:2,borderColor:'#fff'}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'55%',
-      plugins:{legend:{position:'bottom',labels:{font:{size:12},boxWidth:10,padding:6}},
-        tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw}건`}}}}});
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:12},boxWidth:10,padding:8,
+          generateLabels:(chart)=>{
+            const data=chart.data;
+            return data.labels.map((label,i)=>{
+              const val=data.datasets[0].data[i];
+              const pct=totalAll>0?Math.round(val/totalAll*100):0;
+              return {
+                text:`${label} ${val}건 (${pct}%)`,
+                fillStyle:data.datasets[0].backgroundColor[i],
+                strokeStyle:'#fff',
+                lineWidth:1,
+                index:i
+              };
+            });
+          }
+        }},
+        tooltip:{callbacks:{label:ctx=>{
+          const pct=totalAll>0?Math.round(ctx.raw/totalAll*100):0;
+          return `${ctx.label}: ${ctx.raw}건 (${pct}%)`;
+        }}}
+      }}});
 
   // maker chart
   const makerMap={};
