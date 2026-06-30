@@ -381,6 +381,16 @@ body{font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var
   <div class="src-list" id="srcList"></div>
   <div class="src-merge-info" id="srcMergeInfo"></div>
 </div>
+
+<!-- ── ECS 파일 소스 관리 패널 ── -->
+<div class="src-panel" id="ecsSrcPanel">
+  <div class="src-panel-title">
+    <span>📁 업로드된 ECS 공정현황 파일 <span style="font-size:10px;background:#d3f9d8;color:#2f9e44;border-radius:4px;padding:1px 7px;margin-left:6px;font-weight:700">💾 브라우저 자동 저장</span></span>
+    <button onclick="requireAdmin(clearAllECSSources)" style="font-size:11px;color:#e03131;background:none;border:1px solid #ffc9c9;border-radius:6px;padding:2px 10px;cursor:pointer;font-weight:700;font-family:inherit" id="clearAllEcsBtn">전체 초기화</button>
+  </div>
+  <div class="src-list" id="ecsSrcList"></div>
+  <div class="src-merge-info" id="ecsSrcMergeInfo"></div>
+</div>
 <!-- ── KPI ── -->
 <div class="kpi-grid" id="kpiRow"></div>
 
@@ -1939,18 +1949,21 @@ function loadECS(input){
         parsed.push({hull,yard,maker,delivery:delStr,di,insp,prog});
       }
       if(!parsed.length){alert('ECS 파싱 데이터 없음\n\n시트: '+shn+'\n행'+hdr+'부터 탐색\n\n파일 구조를 확인하거나 문의해주세요.');return;}
-      ECSDB=parsed;
+
+      // 덮어쓰기 대신 병합 (Hull No. 기준)
+      mergeECSData(file.name, parsed);
 
       // ── 주차 이력 자동 저장 ──
       const weekLabel = extractWeekLabel(file.name);
       saveHistoryEntry(weekLabel, parsed);
 
-      document.getElementById('uploadHint').textContent=`ECS: ${file.name} (${parsed.length}건) 로드 완료 | 이력 저장: ${weekLabel}`;
-      // Sheets에도 저장 (연동 시)
-      saveECSToSheets(parsed, weekLabel);
+      document.getElementById('uploadHint').textContent=`ECS: ${file.name} (${parsed.length}건) 병합 완료 → 총 ${ECSDB.length}건 | 이력: ${weekLabel}`;
+      // Sheets에도 저장 (연동 시) — 병합된 전체 ECSDB 저장
+      saveECSToSheets(ECSDB, weekLabel);
       document.getElementById('ecsWeek').innerHTML=`<span class="wbdg">${weekLabel}</span>`;
       renderKPI();
       if(activeTab===2)renderECS();
+      if(activeTab===1)renderGantt(currentGanttData||DB);
       if(activeTab===6)renderHistory();
     }catch(err){alert('ECS 오류: '+err.message);}
   };
@@ -2210,6 +2223,103 @@ function saveHistoryEntry(label, ecsData){
   history.sort((a,b)=>b.date.localeCompare(a.date));
   saveHistoryAll(history);
   updateHistoryCount();
+}
+
+
+/* ══════════════════════════════════════════════════════
+   ECS 공정현황 파일 소스 관리 (누적 병합, Hull No. 기준)
+══════════════════════════════════════════════════════ */
+const ECS_SCHED_KEY = 'scrubber_ecs_sources_v1';
+let ECS_SOURCES = [];
+
+function saveECSSourcesToDB(){
+  try{ localStorage.setItem(ECS_SCHED_KEY, JSON.stringify(ECS_SOURCES)); }
+  catch(e){ console.warn('ECS 소스 저장 실패:', e.message); }
+}
+
+function loadECSSourcesFromDB(){
+  try{
+    const raw = localStorage.getItem(ECS_SCHED_KEY);
+    if(!raw) return;
+    const saved = JSON.parse(raw);
+    if(!Array.isArray(saved)||saved.length===0) return;
+    ECS_SOURCES = saved;
+    rebuildECSDB();
+    renderECSSrcPanel();
+  } catch(e){ console.warn('ECS 소스 복원 실패:', e.message); }
+}
+
+// ECS 데이터 병합 (Hull No. 기준 — 동일 호선은 최신 파일이 덮어씀)
+function mergeECSData(filename, newRows){
+  const compMatch = filename.match(/\[([^\]]+)\]/) || filename.match(/^([^_\[]+)/);
+  const company = compMatch ? compMatch[1].trim().slice(0,20) : filename.slice(0,15);
+
+  const existIdx = ECS_SOURCES.findIndex(s => s.filename === filename);
+  if(existIdx >= 0){
+    ECS_SOURCES[existIdx] = {filename, company, count:newRows.length, data:newRows};
+  } else {
+    ECS_SOURCES.push({filename, company, count:newRows.length, data:newRows});
+  }
+  rebuildECSDB();
+  renderECSSrcPanel();
+  saveECSSourcesToDB();
+}
+
+function rebuildECSDB(){
+  const merged = new Map();
+  // 파일을 순서대로 병합 — 나중 파일이 같은 호선이면 덮어씀
+  ECS_SOURCES.forEach(src => {
+    src.data.forEach(r => { merged.set(r.hull, r); });
+  });
+  ECSDB = Array.from(merged.values());
+}
+
+function removeECSSource(filename){
+  if(!adminUnlocked){ openAdminModal(()=>removeECSSource(filename)); return; }
+  ECS_SOURCES = ECS_SOURCES.filter(s => s.filename !== filename);
+  if(ECS_SOURCES.length === 0){
+    ECSDB = [...ECS_DATA]; // 내장 데이터로 복구
+  } else {
+    rebuildECSDB();
+  }
+  renderECSSrcPanel();
+  saveECSSourcesToDB();
+  renderKPI();
+  if(activeTab===2) renderECS();
+  if(activeTab===1) renderGantt(currentGanttData||DB);
+}
+
+function clearAllECSSources(){
+  if(!confirm('모든 ECS 업로드 파일을 제거하고 내장 데이터로 초기화하시겠습니까?')) return;
+  ECS_SOURCES = [];
+  ECSDB = [...ECS_DATA];
+  localStorage.removeItem(ECS_SCHED_KEY);
+  renderECSSrcPanel();
+  renderKPI();
+  if(activeTab===2) renderECS();
+  if(activeTab===1) renderGantt(currentGanttData||DB);
+}
+
+function renderECSSrcPanel(){
+  const panel = document.getElementById('ecsSrcPanel');
+  const list  = document.getElementById('ecsSrcList');
+  const info  = document.getElementById('ecsSrcMergeInfo');
+  if(!panel) return;
+  if(ECS_SOURCES.length === 0){
+    panel.classList.remove('show');
+    return;
+  }
+  panel.classList.add('show');
+  list.innerHTML = ECS_SOURCES.map(s =>
+    `<span class="src-tag">
+      <span class="src-name" title="${s.filename}">[${s.company}] ${s.filename.slice(0,25)}</span>
+      <span class="src-cnt">${s.count}건</span>
+      <button onclick="removeECSSource('${s.filename.replace(/'/g,"\\'")}')" title="이 파일 제거">×</button>
+    </span>`
+  ).join('');
+  const total = ECSDB.length;
+  const files = ECS_SOURCES.length;
+  info.textContent = `총 ${files}개 파일 병합 → ${total}건 (Hull No. 기준, 최신 파일 우선)`;
 }
 
 function clearHistory(){
@@ -2679,6 +2789,7 @@ function initWithRestore(){
     loadFromSheets(); // 비동기, 내부에서 init() 호출
   } else {
     loadSourcesFromDB();
+    loadECSSourcesFromDB();
     init();
   }
 }
